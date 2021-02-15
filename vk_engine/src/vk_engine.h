@@ -34,11 +34,11 @@ public:
 private:
 	// handles
 	struct GLFWwindow* _window { nullptr };
-	VkInstance _instance;
-	VkDebugUtilsMessengerEXT _debugmessager;
+	VkInstance _instance{};
+	VkDebugUtilsMessengerEXT _debugmessager{};
 	VkPhysicalDevice _physicalDevice{ VK_NULL_HANDLE };
-	VkDevice _device;
-	VkQueue _graphicsQueue;
+	VkDevice _device{};
+	VkQueue _graphicsQueue{};
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
