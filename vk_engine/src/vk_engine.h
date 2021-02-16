@@ -14,9 +14,10 @@ const uint32_t HEIGHT = 600;
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamily;
+	std::optional<uint32_t> presentFamily;
 
 	bool isComplete() {
-		return graphicFamily.has_value();
+		return graphicFamily.has_value() && presentFamily.has_value();
 	}
 };
 
@@ -36,9 +37,11 @@ private:
 	struct GLFWwindow* _window { nullptr };
 	VkInstance _instance{};
 	VkDebugUtilsMessengerEXT _debugmessager{};
+	VkSurfaceKHR _surface{};
 	VkPhysicalDevice _physicalDevice{ VK_NULL_HANDLE };
 	VkDevice _device{};
 	VkQueue _graphicsQueue{};
+	VkQueue _presentQueue{};
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -48,6 +51,7 @@ private:
 	void init_vulkan();
 	void createInstance();
 	void setupDebugMessenger();
+	void createSurface();
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	void pickPhysicalDevice();
 	bool isDeviceSuitable(const VkPhysicalDevice& device);
