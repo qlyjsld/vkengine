@@ -14,7 +14,6 @@ static std::vector<char> readfile(const std::string& filename) {
 	}
 
 	size_t filesize = (size_t)file.tellg();
-	std::cout << filename << " filesize: " << filesize << std::endl;
 	std::vector<char> buffer(filesize);
 
 	file.seekg(0);
@@ -279,7 +278,6 @@ VkSurfaceFormatKHR vk_engine::chooseSwapSurfaceFormat(const std::vector<VkSurfac
 			return availableFormat;
 		}
 	}
-	std::cout << "not supported" << std::endl;
 	return availableFormats[0];
 }
 
