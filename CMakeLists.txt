@@ -40,3 +40,5 @@ include_directories(
 	${Vulkan_INCLUDE_DIRS}
 )
 
+# Copy resources
+FILE(COPY vk_engine/shaders DESTINATION "${CMAKE_BINARY_DIR}")
