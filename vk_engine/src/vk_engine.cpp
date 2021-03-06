@@ -2,8 +2,28 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <set>
+#include <fstream>
 
 #include "vk_engine.h"
+
+static std::vector<char> readfile(const std::string& filename) {
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		throw std::runtime_error("failed to open file");
+	}
+
+	size_t filesize = (size_t)file.tellg();
+	std::cout << filename << " filesize: " << filesize << std::endl;
+	std::vector<char> buffer(filesize);
+
+	file.seekg(0);
+	file.read(buffer.data(), filesize);
+
+	file.close();
+
+	return std::move(buffer);
+}
 
 // run the engine
 void vk_engine::run() {
@@ -38,6 +58,7 @@ void vk_engine::init_vulkan() {
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
+	createGraphicsPipeline();
 }
 
 void vk_engine::createInstance() {
@@ -369,6 +390,11 @@ void vk_engine::createImageViews() {
 
 		VK_CHECK(vkCreateImageView(_device, &createInfo, nullptr, &_swapChainImageViews[i]));
 	}
+}
+
+void vk_engine::createGraphicsPipeline() {
+	auto vertShaderCode = readfile("shaders/vert.spv");
+	auto fragShaderCode = readfile("shaders/frag.spv");
 }
 
 // main loop involve rendering on the screen

@@ -45,6 +45,8 @@ const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+static std::vector<char> readfile(const std::string& filename);
+
 class vk_engine {
 public:
 	// public functions
@@ -86,6 +88,7 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	void createSwapChain();
 	void createImageViews();
+	void createGraphicsPipeline();
 	void mainloop();
 	void cleanup();
 
