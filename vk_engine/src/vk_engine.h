@@ -64,6 +64,7 @@ private:
 	std::vector<VkImage> _swapChainImages;
 	VkFormat _swapChainImageFormat;
 	VkExtent2D _swapChainExtent;
+	std::vector<VkImageView> _swapChainImageViews;
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -84,6 +85,7 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	void createSwapChain();
+	void createImageViews();
 	void mainloop();
 	void cleanup();
 
