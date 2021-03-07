@@ -69,6 +69,7 @@ private:
 	std::vector<VkImageView> _swapChainImageViews{};
 	VkRenderPass _renderpass{};
 	VkPipelineLayout _pipelineLayout{};
+	VkPipeline _graphicsPipeline{};
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
