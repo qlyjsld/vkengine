@@ -596,6 +596,27 @@ VkShaderModule vk_engine::createShaderModule(const std::vector<char>& code) {
 	return std::move(shaderModule);
 }
 
+void vk_engine::createFrameBuffers() {
+	_swapChainFrameBuffers.resize(_swapChainImageViews.size());
+
+	for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
+		VkImageView attachments[] = {
+			_swapChainImageViews[i]
+		};
+
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = _renderpass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = _swapChainExtent.width;
+		framebufferInfo.height = _swapChainExtent.height;
+		framebufferInfo.layers = 1;
+
+		VK_CHECK(vkCreateFramebuffer(_device, &framebufferInfo, nullptr, &_swapChainFrameBuffers[i]));
+	}
+}
+
 // main loop involve rendering on the screen
 void vk_engine::mainloop() {
 	while (!glfwWindowShouldClose(_window)) {
@@ -605,6 +626,10 @@ void vk_engine::mainloop() {
 
 // cleanup memory after terminate the program
 void vk_engine::cleanup() {
+	for (auto& frambuffer : _swapChainFrameBuffers) {
+		vkDestroyFramebuffer(_device, frambuffer, nullptr);
+	}
+
 	vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 
