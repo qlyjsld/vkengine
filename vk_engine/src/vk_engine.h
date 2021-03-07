@@ -67,6 +67,7 @@ private:
 	VkFormat _swapChainImageFormat{};
 	VkExtent2D _swapChainExtent{};
 	std::vector<VkImageView> _swapChainImageViews{};
+	VkRenderPass _renderpass{};
 	VkPipelineLayout _pipelineLayout{};
 
 	// callbacks
@@ -89,6 +90,7 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	void createSwapChain();
 	void createImageViews();
+	void createRenderPass();
 	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 	void mainloop();
