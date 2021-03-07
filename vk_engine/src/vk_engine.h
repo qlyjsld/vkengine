@@ -63,10 +63,11 @@ private:
 	VkQueue _graphicsQueue{};
 	VkQueue _presentQueue{};
 	VkSwapchainKHR _swapChain{};
-	std::vector<VkImage> _swapChainImages;
-	VkFormat _swapChainImageFormat;
-	VkExtent2D _swapChainExtent;
-	std::vector<VkImageView> _swapChainImageViews;
+	std::vector<VkImage> _swapChainImages{};
+	VkFormat _swapChainImageFormat{};
+	VkExtent2D _swapChainExtent{};
+	std::vector<VkImageView> _swapChainImageViews{};
+	VkPipelineLayout _pipelineLayout{};
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -89,6 +90,7 @@ private:
 	void createSwapChain();
 	void createImageViews();
 	void createGraphicsPipeline();
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 	void mainloop();
 	void cleanup();
 
