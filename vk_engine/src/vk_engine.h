@@ -71,6 +71,10 @@ private:
 	VkPipelineLayout _pipelineLayout{};
 	VkPipeline _graphicsPipeline{};
 	std::vector<VkFramebuffer> _swapChainFrameBuffers{};
+	VkCommandPool _commandPool{};
+	std::vector<VkCommandBuffer> _commandBuffers{};
+	VkSemaphore _imageAvailableSemaphore{};
+	VkSemaphore _renderFinishedSemaphore{};
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -96,7 +100,11 @@ private:
 	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 	void createFrameBuffers();
+	void createCommandPool();
+	void createCommandBuffers();
+	void createSemaphore();
 	void mainloop();
+	void drawFrame();
 	void cleanup();
 
 	// Extensions / Layers related functions
