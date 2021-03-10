@@ -63,7 +63,7 @@ void vk_engine::init_vulkan() {
 	createFrameBuffers();
 	createCommandPool();
 	createCommandBuffers();
-	createSemaphore();
+	createSyncObjects();
 }
 
 void vk_engine::createInstance() {
