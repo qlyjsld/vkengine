@@ -22,6 +22,8 @@
 #define WIDTH 800
 #define HEIGHT 600
 
+#define MAX_FRAMES_IN_FLIGHT 2
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamily;
 	std::optional<uint32_t> presentFamily;
@@ -73,8 +75,11 @@ private:
 	std::vector<VkFramebuffer> _swapChainFrameBuffers{};
 	VkCommandPool _commandPool{};
 	std::vector<VkCommandBuffer> _commandBuffers{};
-	VkSemaphore _imageAvailableSemaphore{};
-	VkSemaphore _renderFinishedSemaphore{};
+	std::vector<VkSemaphore> _imageAvailableSemaphore{};
+	std::vector<VkSemaphore> _renderFinishedSemaphore{};
+	std::vector<VkFence> _inFlightFences{};
+	std::vector<VkFence> _imagesInFlight{};
+	size_t currentFrame{ 0 };
 
 	// callbacks
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -102,7 +107,7 @@ private:
 	void createFrameBuffers();
 	void createCommandPool();
 	void createCommandBuffers();
-	void createSemaphore();
+	void createSyncObjects();
 	void mainloop();
 	void drawFrame();
 	void cleanup();
