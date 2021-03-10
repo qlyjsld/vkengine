@@ -689,12 +689,24 @@ void vk_engine::createCommandBuffers() {
 	}
 }
 
-void vk_engine::createSemaphore() {
+void vk_engine::createSyncObjects() {
+	_imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+	_renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+	_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	_imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
+
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore));
-	VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore));
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore[i]));
+		VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore[i]));
+		VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]));
+	}
 }
 
 // main loop involve rendering on the screen
@@ -703,16 +715,28 @@ void vk_engine::mainloop() {
 		glfwPollEvents();
 		drawFrame();
 	}
+	vkDeviceWaitIdle(_device);
 }
 
 void vk_engine::drawFrame() {
+	vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
+
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+	// Check if a previous frame is using this image
+	if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+		vkWaitForFences(_device, 1, &_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+	}
+
+	// Mark the image as now being in use by this frame
+	_imagesInFlight[imageIndex] = _inFlightFences[currentFrame];
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { _imageAvailableSemaphore };
+	VkSemaphore waitSemaphores[] = { _imageAvailableSemaphore[currentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
@@ -721,11 +745,13 @@ void vk_engine::drawFrame() {
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &_commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = { _renderFinishedSemaphore };
+	VkSemaphore signalSemaphores[] = { _renderFinishedSemaphore[currentFrame] };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+	vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
+
+	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[currentFrame]));
 
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -741,12 +767,19 @@ void vk_engine::drawFrame() {
 	presentInfo.pResults = nullptr; // Optional
 
 	vkQueuePresentKHR(_presentQueue, &presentInfo);
+
+	vkQueueWaitIdle(_presentQueue);
+
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 // cleanup memory after terminate the program
 void vk_engine::cleanup() {
-	vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroySemaphore(_device, _imageAvailableSemaphore[i], nullptr);
+		vkDestroySemaphore(_device, _renderFinishedSemaphore[i], nullptr);
+		vkDestroyFence(_device, _inFlightFences[i], nullptr);
+	}
 
 	vkDestroyCommandPool(_device, _commandPool, nullptr);
 
