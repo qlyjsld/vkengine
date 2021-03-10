@@ -27,12 +27,7 @@ static std::vector<char> readfile(const std::string& filename) {
 
 // run the engine
 void vk_engine::run() {
-	try {
-		init_window();
-	}
-	catch (const char* e) {
-		throw e;
-	}
+	init_window();
 	init_vulkan();
 	mainloop();
 	cleanup();
@@ -41,7 +36,7 @@ void vk_engine::run() {
 // initialize the GLFW Window
 void vk_engine::init_window() {
 	if (!glfwInit())
-		throw "GLFW initialization failed!";
+		throw std::runtime_error("GLFW initialization failed!");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -720,7 +715,6 @@ void vk_engine::mainloop() {
 
 void vk_engine::drawFrame() {
 	vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-	vkResetFences(_device, 1, &_inFlightFences[currentFrame]);
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -767,8 +761,6 @@ void vk_engine::drawFrame() {
 	presentInfo.pResults = nullptr; // Optional
 
 	vkQueuePresentKHR(_presentQueue, &presentInfo);
-
-	vkQueueWaitIdle(_presentQueue);
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
