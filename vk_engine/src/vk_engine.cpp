@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "vk_engine.h"
+#include "vk_initializers.h"
 
 static std::vector<char> readfile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
