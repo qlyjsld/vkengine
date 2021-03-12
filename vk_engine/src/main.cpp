@@ -1,6 +1,5 @@
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
 
 #include "vk_engine.h"
 
