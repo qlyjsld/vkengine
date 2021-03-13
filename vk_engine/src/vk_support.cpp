@@ -1,4 +1,19 @@
+#include <GLFW/glfw3.h>
 #include "vk_support.h"
+
+std::vector<const char*> vk_support::getRequiredExtension(const bool& enableValidationLayers) {
+	uint32_t glfwExtensionCount = 0;
+	const char** glfwExtensions;
+	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+	if (enableValidationLayers) {
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	}
+
+	return std::move(extensions);
+}
 
 bool vk_support::checkValidationLayerSupport() {
 	uint32_t layerCount;
@@ -59,4 +74,34 @@ void vk_support::DestroyDebugUtilsMessengerEXT(const VkInstance& instance, VkDeb
 	if (func != nullptr) {
 		return func(instance, pDebugMessenger, pAllocator);
 	}
+}
+
+QueueFamilyIndices vk_support::findQueueFamilies(const VkPhysicalDevice& device, const VkSurfaceKHR& surface) {
+	QueueFamilyIndices indices{};
+	// logic to find graphics queue family
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	uint32_t i = 0;
+	VkBool32 presentSupport = VK_FALSE;
+	for (const auto& queueFamily : queueFamilies) {
+		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			indices.graphicFamily = i;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+			if (presentSupport) {
+				indices.presentFamily = i;
+			}
+		}
+		i++;
+
+		if (indices.isComplete()) {
+			break;
+		}
+	}
+
+	return std::move(indices);
 }
