@@ -5,6 +5,7 @@
 #include <fstream>
 #include <set>
 
+#define VMA_IMPLEMENTATION
 #include "vk_engine.h"
 #include "vk_initializers.h"
 
@@ -84,6 +85,15 @@ void vk_engine::init_vulkan() {
 	createFrameBuffers();
 	createCommands();
 	createSyncObjects();
+
+	// initialize the memory allocator
+	VmaAllocatorCreateInfo allocatorInfo{};
+	allocatorInfo.physicalDevice = _physicalDevice;
+	allocatorInfo.device = _device;
+	allocatorInfo.instance = _instance;
+	vmaCreateAllocator(&allocatorInfo, &_allocator);
+
+	load_meshes();
 }
 
 void vk_engine::createInstance() {
@@ -264,7 +274,9 @@ void vk_engine::createGraphicsPipeline() {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = vk_init::PipelineLayoutCreateInfo();
 	VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_init::VertexInputStateCreateInfo();
+	VertexInputDescription description = Vertex::get_vertex_description();
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_init::VertexInputStateCreateInfo(description.bindings, description.attributes);
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = vk_init::InputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
 	VkViewport viewport{};
@@ -425,6 +437,10 @@ void vk_engine::drawFrame() {
 
 	vkCmdBindPipeline(_commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 
+	// bind the mesh vertex buffer with offset 0
+	VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(_commandBuffers[imageIndex], 0, 1, &_triangleMesh._vertexBuffer._buffer, &offset);
+
 	vkCmdDraw(_commandBuffers[imageIndex], 3, 1, 0, 0);
 
 	vkCmdEndRenderPass(_commandBuffers[imageIndex]);
@@ -467,6 +483,10 @@ void vk_engine::drawFrame() {
 
 // cleanup memory after terminate the program
 void vk_engine::cleanup() {
+	vmaDestroyBuffer(_allocator, _triangleMesh._vertexBuffer._buffer, _triangleMesh._vertexBuffer._allocation);
+
+	vmaDestroyAllocator(_allocator);
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(_device, _imageAvailableSemaphore[i], nullptr);
 		vkDestroySemaphore(_device, _renderFinishedSemaphore[i], nullptr);
@@ -565,4 +585,41 @@ VkExtent2D vk_engine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
 
 		return std::move(actualExtent);
 	}
+}
+
+void vk_engine::load_meshes() {
+	_triangleMesh._vertices.resize(3);
+
+	_triangleMesh._vertices[0].position = { 0.0f, -0.5f, 0.0f };
+	_triangleMesh._vertices[1].position = { 0.5f, 0.5f, 0.0f };
+	_triangleMesh._vertices[2].position = { -0.5f, 0.5f, 0.0f };
+
+	_triangleMesh._vertices[0].color = { 0.0f, -0.5f, 0.0f };
+	_triangleMesh._vertices[1].color = { 0.5f, 0.5f, 0.0f };
+	_triangleMesh._vertices[2].color = { -0.5f, 0.5f, 0.0f };
+
+	upload_mesh(_triangleMesh);
+}
+
+void vk_engine::upload_mesh(Mesh& mesh) {
+	// allocate Vertex Buffer
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	// total size in bytes
+	bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+	// let vma know this buffer is gonna written by cpu and read by gpu
+	VmaAllocationCreateInfo allocationInfo{};
+	allocationInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
+
+	// copy vertex data
+	void* data;
+	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+
+	memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+
+	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
 }

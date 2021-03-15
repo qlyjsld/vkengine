@@ -1,5 +1,6 @@
 #pragma once
 #include "vk_support.h"
+#include "vk_mesh.h"
 
 class vk_engine {
 public:
@@ -8,7 +9,7 @@ public:
 
 private:
 	// handles
-	struct GLFWwindow* _window { nullptr };
+	struct GLFWwindow* _window{ nullptr };
 
 	VkInstance _instance;
 	VkDebugUtilsMessengerEXT _debugmessager;
@@ -43,6 +44,10 @@ private:
 
 	size_t currentFrame{ 0 };
 
+	VmaAllocator _allocator; // vma lib allocator
+
+	Mesh _triangleMesh;
+
 	// callback
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
@@ -67,4 +72,9 @@ private:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
+	// Meshes
+	void load_meshes();
+
+	void upload_mesh(Mesh& mesh);
 };

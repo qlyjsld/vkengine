@@ -3,6 +3,13 @@
 #include <vector>
 #include <optional>
 
+#include "vma/vk_mem_alloc.h"
+
+struct AllocatedBuffer {
+	VkBuffer _buffer;
+	VmaAllocation _allocation;
+};
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamily;
 	std::optional<uint32_t> presentFamily;

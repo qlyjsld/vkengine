@@ -119,13 +119,13 @@ VkPipelineLayoutCreateInfo vk_init::PipelineLayoutCreateInfo() {
 	return std::move(pipelineLayoutInfo);
 }
 
-VkPipelineVertexInputStateCreateInfo vk_init::VertexInputStateCreateInfo() {
+VkPipelineVertexInputStateCreateInfo vk_init::VertexInputStateCreateInfo(const std::vector<VkVertexInputBindingDescription>& bindings, const std::vector<VkVertexInputAttributeDescription>& attributes){
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = bindings.data(); // Optional
+	vertexInputInfo.vertexAttributeDescriptionCount = 1;
+	vertexInputInfo.pVertexAttributeDescriptions = attributes.data(); // Optional
 
 	return std::move(vertexInputInfo);
 }
