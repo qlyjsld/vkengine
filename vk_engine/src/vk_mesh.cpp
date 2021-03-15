@@ -20,17 +20,17 @@ VertexInputDescription Vertex::get_vertex_description() {
 
 	// Position will be stored at Location 1
 	VkVertexInputAttributeDescription colorAttribute{};
-	positionAttribute.binding = 0;
-	positionAttribute.location = 1;
-	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	positionAttribute.offset = offsetof(Vertex, color);
+	colorAttribute.binding = 0;
+	colorAttribute.location = 1;
+	colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	colorAttribute.offset = offsetof(Vertex, color);
 
 	// Position will be stored at Location 2
 	VkVertexInputAttributeDescription normalAttribute{};
-	positionAttribute.binding = 0;
-	positionAttribute.location = 2;
-	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-	positionAttribute.offset = offsetof(Vertex, normal);
+	normalAttribute.binding = 0;
+	normalAttribute.location = 2;
+	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+	normalAttribute.offset = offsetof(Vertex, normal);
 
 	description.attributes.push_back(positionAttribute);
 	description.attributes.push_back(colorAttribute);
