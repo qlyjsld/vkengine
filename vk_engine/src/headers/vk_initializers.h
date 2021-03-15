@@ -16,7 +16,7 @@ namespace vk_init {
 
 	VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 
-	VkPipelineVertexInputStateCreateInfo VertexInputStateCreateInfo();
+	VkPipelineVertexInputStateCreateInfo VertexInputStateCreateInfo(const std::vector<VkVertexInputBindingDescription>& bindings, const std::vector<VkVertexInputAttributeDescription>& attributes);
 
 	VkPipelineInputAssemblyStateCreateInfo InputAssemblyStateCreateInfo(const VkPrimitiveTopology& topology);
 
