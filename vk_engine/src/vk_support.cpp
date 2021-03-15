@@ -1,5 +1,6 @@
 #include <GLFW/glfw3.h>
 #include "vk_support.h"
+#include <cstring>
 
 std::vector<const char*> vk_support::getRequiredExtension(const bool& enableValidationLayers) {
 	uint32_t glfwExtensionCount = 0;
