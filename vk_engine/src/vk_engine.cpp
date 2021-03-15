@@ -594,9 +594,9 @@ void vk_engine::load_meshes() {
 	_triangleMesh._vertices[1].position = { 0.5f, 0.5f, 0.0f };
 	_triangleMesh._vertices[2].position = { -0.5f, 0.5f, 0.0f };
 
-	_triangleMesh._vertices[0].color = { 0.0f, -0.5f, 0.0f };
-	_triangleMesh._vertices[1].color = { 0.5f, 0.5f, 0.0f };
-	_triangleMesh._vertices[2].color = { -0.5f, 0.5f, 0.0f };
+	_triangleMesh._vertices[0].color = { 1.0f, 0.0f, 1.0f };
+	_triangleMesh._vertices[1].color = { 0.0f, 1.0f, 0.0f };
+	_triangleMesh._vertices[2].color = { 1.0f, 0.0f, 1.0f };
 
 	upload_mesh(_triangleMesh);
 }
