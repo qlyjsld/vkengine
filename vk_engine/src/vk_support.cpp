@@ -13,7 +13,7 @@ std::vector<const char*> vk_support::getRequiredExtension(const bool& enableVali
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
 
-	return std::move(extensions);
+	return extensions;
 }
 
 bool vk_support::checkValidationLayerSupport() {
@@ -104,5 +104,5 @@ QueueFamilyIndices vk_support::findQueueFamilies(const VkPhysicalDevice& device,
 		}
 	}
 
-	return std::move(indices);
+	return indices;
 }

@@ -1,5 +1,12 @@
 #include "vk_mesh.h"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
+
+#include <iostream>
+#include <future>
+#include <mutex>
+
 VertexInputDescription Vertex::get_vertex_description() {
 	VertexInputDescription description;
 
@@ -36,5 +43,71 @@ VertexInputDescription Vertex::get_vertex_description() {
 	description.attributes.push_back(colorAttribute);
 	description.attributes.push_back(normalAttribute);
 
-	return std::move(description);
+	return description;
+}
+
+std::mutex vector_mutex;
+
+void load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape, std::vector<Vertex>& vertices){
+	size_t index_offset = 0;
+	// loop over faces
+	for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
+		int fv = shape.mesh.num_face_vertices[f];
+		// loop over vertices of face
+		for (size_t v = 0; v < fv; v++) {
+			// access to vertex
+			tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
+			float vx = attrib.vertices[3 * idx.vertex_index + 0];
+			float vy = attrib.vertices[3 * idx.vertex_index + 1];
+			float vz = attrib.vertices[3 * idx.vertex_index + 2];
+			float nx = attrib.normals[3 * idx.normal_index + 0];
+			float ny = attrib.normals[3 * idx.normal_index + 1];
+			float nz = attrib.normals[3 * idx.normal_index + 2];
+
+			Vertex vertex;
+			vertex.position.x = vx;
+			vertex.position.y = vy;
+			vertex.position.z = vz;
+
+			vertex.normal.x = nx;
+			vertex.normal.x = ny;
+			vertex.normal.x = nz;
+
+			vertex.color = vertex.position;
+
+			std::lock_guard<std::mutex> lock(vector_mutex);
+			vertices.push_back(std::move(vertex));
+		}
+		index_offset += fv;
+	}
+}
+
+bool Mesh::load_from_obj(const char* filename) {
+	// attrib will contain the vertex arrays of the file
+	tinyobj::attrib_t attrib;
+	// shapes contain the vertices of each separate object in the file
+	std::vector<tinyobj::shape_t> shapes;
+	// materials contain the material of each separate object in the file
+	std::vector<tinyobj::material_t> materials;
+
+	// err stands for error
+	std::string err;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename);
+
+	if (!err.empty()) {
+		std::cerr << err << std::endl;
+	}
+
+	if (!ret) {
+		return false;
+	}
+
+	// Loop over shapes
+	for (size_t s = 0; s < shapes.size(); s++) {
+		std::async(std::launch::async, load_shape, attrib, shapes[s], std::ref(_vertices));
+	}
+
+	std::cout << "finished loading: " << filename << std::endl;
+
+	return true;
 }

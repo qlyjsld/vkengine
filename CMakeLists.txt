@@ -38,8 +38,10 @@ include_directories(
 	"vendors/glfw-3.3.2/include"
 	"vendors/glm"
 	"vendors/vma"
+	"vendors/tinyobjloader"
 	${Vulkan_INCLUDE_DIRS}
 )
 
 # Copy resources
 FILE(COPY vk_engine/shaders DESTINATION "${CMAKE_BINARY_DIR}")
+FILE(COPY vk_engine/assets DESTINATION "${CMAKE_BINARY_DIR}")
