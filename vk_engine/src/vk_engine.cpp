@@ -8,6 +8,7 @@
 #define VMA_IMPLEMENTATION
 #include "vk_engine.h"
 #include "vk_initializers.h"
+#include "glm/gtc/matrix_transform.hpp"
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -25,12 +26,12 @@ const bool enableValidationLayers = true;
 		}\
 	} while (0);
 
-#define WIDTH 800
-#define HEIGHT 600
+const float WIDTH = 1600.0f;
+const float HEIGHT = 900.0f;
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
-const VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+const VkClearValue clearColor = { 0.0f, 0.75f, 0.5f, 1.0f };
 
 static std::vector<char> readfile(const std::string & filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -47,7 +48,7 @@ static std::vector<char> readfile(const std::string & filename) {
 
 	file.close();
 
-	return std::move(buffer);
+	return buffer;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vk_engine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -272,6 +273,18 @@ void vk_engine::createGraphicsPipeline() {
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = vk_init::PipelineLayoutCreateInfo();
+
+	// setup push constants
+	VkPushConstantRange push_const;
+	// this const range start from beg and the size
+	push_const.offset = 0;
+	push_const.size = sizeof(MeshPushConsts);
+	// this const is accessable only by the vertex shader
+	push_const.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	pipelineLayoutInfo.pPushConstantRanges = &push_const;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+
 	VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 
 	VertexInputDescription description = Vertex::get_vertex_description();
@@ -336,7 +349,7 @@ VkShaderModule vk_engine::createShaderModule(const std::vector<char>& code) {
 	VkShaderModule shaderModule;
 	VK_CHECK(vkCreateShaderModule(_device, &createInfo, nullptr, &shaderModule));
 
-	return std::move(shaderModule);
+	return shaderModule;
 }
 
 void vk_engine::createFrameBuffers() {
@@ -439,9 +452,31 @@ void vk_engine::drawFrame() {
 
 	// bind the mesh vertex buffer with offset 0
 	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(_commandBuffers[imageIndex], 0, 1, &_triangleMesh._vertexBuffer._buffer, &offset);
+	vkCmdBindVertexBuffers(_commandBuffers[imageIndex], 0, 1, &_monkeyMesh._vertexBuffer._buffer, &offset);
 
-	vkCmdDraw(_commandBuffers[imageIndex], 3, 1, 0, 0);
+	// modelView matrix
+	// camera position
+	glm::vec3 camPos = { 0.0f, 0.0f, -2.25f };
+
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
+	// camera projection
+	glm::mat4 projection = glm::perspective(glm::radians(70.0f), WIDTH / HEIGHT, 0.1f, 200.0f);
+
+	// model rotation
+	// glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(_frameNumber * 0.05f), glm::vec3(1.0f, 1.0f, 1.0f));
+	glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	model = glm::rotate(model, glm::radians(_frameNumber * 0.01f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 mesh_matrix = projection * view * model;
+
+	MeshPushConsts consts;
+	consts.render_matrix = mesh_matrix;
+
+	// push the constant to the gpu
+	vkCmdPushConstants(_commandBuffers[imageIndex], _pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConsts), &consts);
+
+	vkCmdDraw(_commandBuffers[imageIndex], _monkeyMesh._vertices.size(), 1, 0, 0);
 
 	vkCmdEndRenderPass(_commandBuffers[imageIndex]);
 
@@ -479,10 +514,13 @@ void vk_engine::drawFrame() {
 	vkQueuePresentKHR(_presentQueue, &presentInfo);
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	_frameNumber += 1;
 }
 
 // cleanup memory after terminate the program
 void vk_engine::cleanup() {
+	vmaDestroyBuffer(_allocator, _monkeyMesh._vertexBuffer._buffer, _monkeyMesh._vertexBuffer._allocation);
+
 	vmaDestroyBuffer(_allocator, _triangleMesh._vertexBuffer._buffer, _triangleMesh._vertexBuffer._allocation);
 
 	vmaDestroyAllocator(_allocator);
@@ -546,12 +584,12 @@ SwapChainSupportDetails vk_engine::querySwapChainSupport(const VkPhysicalDevice&
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, _surface, &presentModeCount, details.presentModes.data());
 	}
 
-	return std::move(details);
+	return details;
 }
 
 VkSurfaceFormatKHR vk_engine::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 	for (const auto& availableFormat : availableFormats) {
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormat;
 		}
 	}
@@ -583,7 +621,7 @@ VkExtent2D vk_engine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
 		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 		actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
 
-		return std::move(actualExtent);
+		return actualExtent;
 	}
 }
 
@@ -598,7 +636,10 @@ void vk_engine::load_meshes() {
 	_triangleMesh._vertices[1].color = { 0.0f, 1.0f, 0.0f };
 	_triangleMesh._vertices[2].color = { 1.0f, 0.0f, 1.0f };
 
+	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
+	
 	upload_mesh(_triangleMesh);
+	upload_mesh(_monkeyMesh);
 }
 
 void vk_engine::upload_mesh(Mesh& mesh) {

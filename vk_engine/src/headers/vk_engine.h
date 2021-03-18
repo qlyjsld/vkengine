@@ -1,6 +1,12 @@
 #pragma once
 #include "vk_support.h"
 #include "vk_mesh.h"
+#include <glm/glm.hpp>
+
+struct MeshPushConsts {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
+};
 
 class vk_engine {
 public:
@@ -43,10 +49,12 @@ private:
 	std::vector<VkFence> _imagesInFlight;
 
 	size_t currentFrame{ 0 };
+	size_t _frameNumber{ 0 };
 
 	VmaAllocator _allocator; // vma lib allocator
 
 	Mesh _triangleMesh;
+	Mesh _monkeyMesh;
 
 	// callback
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
