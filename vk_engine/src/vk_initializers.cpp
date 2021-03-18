@@ -9,7 +9,7 @@ VkDebugUtilsMessengerCreateInfoEXT vk_init::DebugMessengerCreateInfo(PFN_vkDebug
 	createInfo.pfnUserCallback = debugCallback;
 	createInfo.pUserData = nullptr;
 
-	return std::move(createInfo);
+	return (createInfo);
 }
 
 VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(const uint32_t& queueFamily, const float& queuePriority) {
@@ -19,7 +19,7 @@ VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(const uint32_t& queueFami
 	queueCreateInfo.queueCount = 1;
 	queueCreateInfo.pQueuePriorities = &queuePriority;
 
-	return std::move(queueCreateInfo);
+	return (queueCreateInfo);
 }
 
 VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, const VkPhysicalDeviceFeatures& deviceFeatures, const std::vector<const char*>& deviceExtensions) {
@@ -36,7 +36,7 @@ VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCrea
 
 	deviceCreateInfo.enabledLayerCount = 0;
 
-	return std::move(deviceCreateInfo);
+	return (deviceCreateInfo);
 }
 
 VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surface, const uint32_t& image_count, const SwapChainSupportDetails& swapChainSupport, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const QueueFamilyIndices& indices) {
@@ -70,7 +70,7 @@ VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surfac
 	createInfo.clipped = VK_TRUE;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	return std::move(createInfo);
+	return createInfo;
 }
 
 VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const VkFormat& format) {
@@ -92,7 +92,7 @@ VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const V
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
 
-	return std::move(createInfo);
+	return createInfo;
 }
 
 VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(const VkAttachmentDescription& colorAttachment, const VkSubpassDescription& subpass, const VkSubpassDependency& dependency) {
@@ -105,7 +105,7 @@ VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(const VkAttachmentDescripti
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	return std::move(renderPassInfo);
+	return renderPassInfo;
 }
 
 VkPipelineLayoutCreateInfo vk_init::PipelineLayoutCreateInfo() {
@@ -116,7 +116,7 @@ VkPipelineLayoutCreateInfo vk_init::PipelineLayoutCreateInfo() {
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
-	return std::move(pipelineLayoutInfo);
+	return pipelineLayoutInfo;
 }
 
 VkPipelineVertexInputStateCreateInfo vk_init::VertexInputStateCreateInfo(const std::vector<VkVertexInputBindingDescription>& bindings, const std::vector<VkVertexInputAttributeDescription>& attributes){
@@ -127,7 +127,7 @@ VkPipelineVertexInputStateCreateInfo vk_init::VertexInputStateCreateInfo(const s
 	vertexInputInfo.vertexAttributeDescriptionCount = attributes.size();
 	vertexInputInfo.pVertexAttributeDescriptions = attributes.data(); // Optional
 
-	return std::move(vertexInputInfo);
+	return vertexInputInfo;
 }
 
 VkPipelineInputAssemblyStateCreateInfo vk_init::InputAssemblyStateCreateInfo(const VkPrimitiveTopology& topology) {
@@ -136,7 +136,7 @@ VkPipelineInputAssemblyStateCreateInfo vk_init::InputAssemblyStateCreateInfo(con
 	inputAssembly.topology = topology;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	return std::move(inputAssembly);
+	return inputAssembly;
 }
 
 VkPipelineRasterizationStateCreateInfo vk_init::RasterizationStateCreateInfo(const VkPolygonMode& pMode) {
@@ -153,7 +153,7 @@ VkPipelineRasterizationStateCreateInfo vk_init::RasterizationStateCreateInfo(con
 	rasterizer.depthBiasClamp = 0.0f; // Optional
 	rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
 
-	return std::move(rasterizer);
+	return rasterizer;
 }
 
 VkPipelineMultisampleStateCreateInfo vk_init::MultisampleStateCreateInfo() {
@@ -166,7 +166,7 @@ VkPipelineMultisampleStateCreateInfo vk_init::MultisampleStateCreateInfo() {
 	multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
 	multisampling.alphaToOneEnable = VK_FALSE; // Optional
 
-	return std::move(multisampling);
+	return multisampling;
 }
 
 VkPipelineColorBlendAttachmentState vk_init::ColorBlendAttachmentState() {
@@ -180,7 +180,7 @@ VkPipelineColorBlendAttachmentState vk_init::ColorBlendAttachmentState() {
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
 
-	return std::move(colorBlendAttachment);
+	return colorBlendAttachment;
 }
 
 VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(const VkPipelineColorBlendAttachmentState& colorBlendAttachment) {
@@ -195,7 +195,7 @@ VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(const VkP
 	colorBlending.blendConstants[2] = 0.0f; // Optional
 	colorBlending.blendConstants[3] = 0.0f; // Optional
 
-	return std::move(colorBlending);
+	return colorBlending;
 }
 
 VkFramebufferCreateInfo vk_init::FramebufferCreateInfo(const VkRenderPass& renderpass, const VkExtent2D& extent) {
@@ -207,5 +207,5 @@ VkFramebufferCreateInfo vk_init::FramebufferCreateInfo(const VkRenderPass& rende
 	framebufferInfo.height = extent.height;
 	framebufferInfo.layers = 1;
 
-	return std::move(framebufferInfo);
+	return framebufferInfo;
 }
