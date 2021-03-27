@@ -12,7 +12,7 @@ VkDebugUtilsMessengerCreateInfoEXT vk_init::DebugMessengerCreateInfo(PFN_vkDebug
 	return (createInfo);
 }
 
-VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(const uint32_t& queueFamily, const float& queuePriority) {
+VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(uint32_t queueFamily, float queuePriority) {
 	VkDeviceQueueCreateInfo queueCreateInfo{};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.queueFamilyIndex = queueFamily;
@@ -39,7 +39,7 @@ VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCrea
 	return (deviceCreateInfo);
 }
 
-VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surface, const uint32_t& image_count, const SwapChainSupportDetails& swapChainSupport, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const QueueFamilyIndices& indices) {
+VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const QueueFamilyIndices& indices) {
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface;
@@ -73,9 +73,10 @@ VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surfac
 	return createInfo;
 }
 
-VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const VkFormat& format) {
+VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const VkFormat& format, const VkImageAspectFlags& aspectMask) {
 	VkImageViewCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	createInfo.pNext = nullptr;
 	createInfo.image = image;
 
 	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -86,7 +87,7 @@ VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const V
 	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	createInfo.subresourceRange.aspectMask = aspectMask;
 	createInfo.subresourceRange.baseMipLevel = 0;
 	createInfo.subresourceRange.levelCount = 1;
 	createInfo.subresourceRange.baseArrayLayer = 0;
@@ -95,11 +96,30 @@ VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const V
 	return createInfo;
 }
 
-VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(const VkAttachmentDescription& colorAttachment, const VkSubpassDescription& subpass, const VkSubpassDependency& dependency) {
+VkImageCreateInfo vk_init::ImageCreateInfo(const VkFormat& format, const VkImageUsageFlags& usageFlags, const VkExtent3D& extent) {
+	VkImageCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	info.pNext = nullptr;
+
+	info.imageType = VK_IMAGE_TYPE_2D;
+
+	info.format = format;
+	info.extent = extent;
+
+	info.mipLevels = 1;
+	info.arrayLayers = 1;
+	info.samples = VK_SAMPLE_COUNT_1_BIT;
+	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.usage = usageFlags;
+
+	return info;
+}
+
+VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(const VkAttachmentDescription* attachments, const VkSubpassDescription& subpass, const VkSubpassDependency& dependency) {
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.attachmentCount = 2;
+	renderPassInfo.pAttachments = &attachments[0];
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
@@ -208,4 +228,20 @@ VkFramebufferCreateInfo vk_init::FramebufferCreateInfo(const VkRenderPass& rende
 	framebufferInfo.layers = 1;
 
 	return framebufferInfo;
+}
+
+VkPipelineDepthStencilStateCreateInfo vk_init::PipelineDepthStencilStateCreateInfo (bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp) {
+	VkPipelineDepthStencilStateCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	createInfo.pNext = nullptr;
+
+	createInfo.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE;
+	createInfo.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE;
+	createInfo.depthCompareOp = bDepthTest ? compareOp : VK_COMPARE_OP_ALWAYS;
+	createInfo.depthBoundsTestEnable = VK_FALSE;
+	createInfo.minDepthBounds = 0.0f; // Optional
+	createInfo.maxDepthBounds = 1.0f; // Optional
+	createInfo.stencilTestEnable = VK_FALSE;
+
+	return createInfo;
 }

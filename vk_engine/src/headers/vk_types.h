@@ -10,6 +10,11 @@ struct AllocatedBuffer {
 	VmaAllocation _allocation;
 };
 
+struct AllocatedImage {
+	VkImage _image;
+	VmaAllocation _allocation;
+};
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamily;
 	std::optional<uint32_t> presentFamily;
