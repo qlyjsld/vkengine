@@ -208,7 +208,7 @@ void vk_engine::init_window() {
 		throw std::runtime_error("GLFW initialization failed!");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	// glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	_window = glfwCreateWindow(WIDTH, HEIGHT, "vk_engine", NULL, NULL);
 }
