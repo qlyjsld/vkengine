@@ -18,7 +18,7 @@ struct DeletionQueue {
 	}
 
 	void flush(){
-		for (auto it = deletors.begin(); it < deletors.end(); it++){
+		for (auto it = deletors.end() - 1; it > deletors.begin(); it--){
 			(*it)(); // call function
 		}
 		deletors.clear();
