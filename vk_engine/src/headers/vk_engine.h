@@ -1,11 +1,28 @@
 #pragma once
 #include "vk_support.h"
 #include "vk_mesh.h"
+#include <deque>
+#include <functional>
 #include <glm/glm.hpp>
 
 struct MeshPushConsts {
 	glm::vec4 data;
 	glm::mat4 render_matrix;
+};
+
+struct DeletionQueue {
+	std::deque<std::function<void()>> deletors;
+
+	void push_function(std::function<void()>&& func){
+		deletors.push_back(func);
+	}
+
+	void flush(){
+		for (auto it = deletors.begin(); it < deletors.end(); it++){
+			(*it)(); // call function
+		}
+		deletors.clear();
+	}
 };
 
 class vk_engine {
@@ -16,6 +33,7 @@ public:
 private:
 	// handles
 	struct GLFWwindow* _window{ nullptr };
+	DeletionQueue _deletionQueue;
 
 	VkInstance _instance;
 	VkDebugUtilsMessengerEXT _debugmessager;
@@ -32,6 +50,9 @@ private:
 	VkFormat _swapChainImageFormat;
 	VkExtent2D _swapChainExtent;
 	std::vector<VkImageView> _swapChainImageViews;
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+	VkFormat _depthFormat;
 
 	VkRenderPass _renderpass;
 
