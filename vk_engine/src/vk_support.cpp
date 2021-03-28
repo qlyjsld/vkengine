@@ -2,7 +2,7 @@
 #include "vk_support.h"
 #include <cstring>
 
-std::vector<const char*> vk_support::getRequiredExtension(const bool& enableValidationLayers) {
+std::vector<const char*> vk_support::getRequiredExtension(bool enableValidationLayers) {
 	uint32_t glfwExtensionCount = 0;
 	const char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -38,7 +38,7 @@ bool vk_support::checkValidationLayerSupport() {
 	return true;
 }
 
-bool vk_support::checkDeviceExtensionsSupport(const VkPhysicalDevice& device) {
+bool vk_support::checkDeviceExtensionsSupport(VkPhysicalDevice device) {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -60,7 +60,7 @@ bool vk_support::checkDeviceExtensionsSupport(const VkPhysicalDevice& device) {
 	return true;
 }
 
-VkResult vk_support::CreateDebugUtilsMessengerEXT(const VkInstance& instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+VkResult vk_support::CreateDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -70,14 +70,14 @@ VkResult vk_support::CreateDebugUtilsMessengerEXT(const VkInstance& instance, co
 	}
 }
 
-void vk_support::DestroyDebugUtilsMessengerEXT(const VkInstance& instance, VkDebugUtilsMessengerEXT pDebugMessenger, const VkAllocationCallbacks* pAllocator) {
+void vk_support::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT pDebugMessenger, VkAllocationCallbacks* pAllocator) {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		return func(instance, pDebugMessenger, pAllocator);
 	}
 }
 
-QueueFamilyIndices vk_support::findQueueFamilies(const VkPhysicalDevice& device, const VkSurfaceKHR& surface) {
+QueueFamilyIndices vk_support::findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	QueueFamilyIndices indices{};
 	// logic to find graphics queue family
 	uint32_t queueFamilyCount = 0;

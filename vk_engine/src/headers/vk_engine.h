@@ -25,10 +25,34 @@ struct DeletionQueue {
 	}
 };
 
+struct Material {
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject {
+	Mesh* mesh;
+	Material* material;
+	glm::mat4 transformMatrix;
+};
+
 class vk_engine {
 public:
 	// public functions
 	void run();
+
+	// default array of renderable objects
+	std::vector<RenderObject> _renderables;
+
+	std::unordered_map<std::string, Material> _materials;
+	std::unordered_map<std::string, Mesh> _meshes;
+
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	Material* get_material(const std::string& name);
+
+	Mesh* get_mesh(const std::string& name);
+
+	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
 
 private:
 	// handles
@@ -67,15 +91,15 @@ private:
 	std::vector<VkSemaphore> _imageAvailableSemaphore;
 	std::vector<VkSemaphore> _renderFinishedSemaphore;
 	std::vector<VkFence> _inFlightFences;
-	std::vector<VkFence> _imagesInFlight;
+	// std::vector<VkFence> _imagesInFlight;
 
 	size_t currentFrame{ 0 };
 	size_t _frameNumber{ 0 };
 
 	VmaAllocator _allocator; // vma lib allocator
 
-	Mesh _triangleMesh;
-	Mesh _monkeyMesh;
+	// Mesh _triangleMesh;
+	// Mesh _monkeyMesh;
 
 	// callback
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -83,6 +107,7 @@ private:
 	// functions
 	void init_window();
 	void init_vulkan();
+	void init_scene();
 	void createInstance();
 	void createLogicalDevice();
 	void createSwapChain();
@@ -104,6 +129,5 @@ private:
 
 	// Meshes
 	void load_meshes();
-
 	void upload_mesh(Mesh& mesh);
 };
