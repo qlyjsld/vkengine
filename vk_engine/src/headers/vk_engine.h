@@ -1,121 +1,133 @@
 #pragma once
-#include <vulkan/vulkan.h>
-#include <vector>
-#include <optional>
+#include "vk_support.h"
+#include "vk_mesh.h"
+#include <deque>
+#include <functional>
+#include <glm/glm.hpp>
 
-#ifdef NDEBUG
-	const bool enableValidationLayers = false;
-#else
-	const bool enableValidationLayers = true;
-#endif
+struct MeshPushConsts {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
+};
 
-// vulkan related error detection macro
-#define VK_CHECK(x)\
-	do{\
-		VkResult err = x;\
-		if (err){\
-			std::cout << "Error: " << err << std::endl;\
-			abort();\
-		}\
-	} while (0);
+struct DeletionQueue {
+	std::deque<std::function<void()>> deletors;
 
-#define WIDTH 800
-#define HEIGHT 600
+	void push_function(std::function<void()>&& func){
+		deletors.push_back(func);
+	}
 
-#define MAX_FRAMES_IN_FLIGHT 2
-
-struct QueueFamilyIndices {
-	std::optional<uint32_t> graphicFamily;
-	std::optional<uint32_t> presentFamily;
-
-	bool isComplete() {
-		return graphicFamily.has_value() && presentFamily.has_value();
+	void flush(){
+		for (auto it = deletors.end() - 1; it > deletors.begin(); it--){
+			(*it)(); // call function
+		}
+		deletors.clear();
 	}
 };
 
-struct SwapChainSupportDetails {
-	VkSurfaceCapabilitiesKHR capabilities{};
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
+struct Material {
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
 };
 
-const std::vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+struct RenderObject {
+	Mesh* mesh;
+	Material* material;
+	glm::mat4 transformMatrix;
 };
-
-const std::vector<const char*> deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
-static std::vector<char> readfile(const std::string& filename);
 
 class vk_engine {
 public:
 	// public functions
 	void run();
 
+	// default array of renderable objects
+	std::vector<RenderObject> _renderables;
+
+	std::unordered_map<std::string, Material> _materials;
+	std::unordered_map<std::string, Mesh> _meshes;
+
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	Material* get_material(const std::string& name);
+
+	Mesh* get_mesh(const std::string& name);
+
+	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
+
 private:
 	// handles
-	struct GLFWwindow* _window { nullptr };
-	VkInstance _instance{};
-	VkDebugUtilsMessengerEXT _debugmessager{};
-	VkSurfaceKHR _surface{};
-	VkPhysicalDevice _physicalDevice{ VK_NULL_HANDLE };
-	VkDevice _device{};
-	VkQueue _graphicsQueue{};
-	VkQueue _presentQueue{};
-	VkSwapchainKHR _swapChain{};
-	std::vector<VkImage> _swapChainImages{};
-	VkFormat _swapChainImageFormat{};
-	VkExtent2D _swapChainExtent{};
-	std::vector<VkImageView> _swapChainImageViews{};
-	VkRenderPass _renderpass{};
-	VkPipelineLayout _pipelineLayout{};
-	VkPipeline _graphicsPipeline{};
-	std::vector<VkFramebuffer> _swapChainFrameBuffers{};
-	VkCommandPool _commandPool{};
-	std::vector<VkCommandBuffer> _commandBuffers{};
-	std::vector<VkSemaphore> _imageAvailableSemaphore{};
-	std::vector<VkSemaphore> _renderFinishedSemaphore{};
-	std::vector<VkFence> _inFlightFences{};
-	std::vector<VkFence> _imagesInFlight{};
-	size_t currentFrame{ 0 };
+	struct GLFWwindow* _window{ nullptr };
+	DeletionQueue _deletionQueue;
 
-	// callbacks
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+	VkInstance _instance;
+	VkDebugUtilsMessengerEXT _debugmessager;
+	VkSurfaceKHR _surface;
+	VkPhysicalDevice _physicalDevice;
+	VkDevice _device;
+
+	VkQueue _graphicsQueue;
+	VkQueue _presentQueue;
+	QueueFamilyIndices _indices;
+
+	VkSwapchainKHR _swapChain;
+	std::vector<VkImage> _swapChainImages;
+	VkFormat _swapChainImageFormat;
+	VkExtent2D _swapChainExtent;
+	std::vector<VkImageView> _swapChainImageViews;
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+	VkFormat _depthFormat;
+
+	VkRenderPass _renderpass;
+
+	VkPipelineLayout _pipelineLayout;
+	VkPipeline _graphicsPipeline;
+
+	std::vector<VkFramebuffer> _swapChainFrameBuffers;
+
+	VkCommandPool _commandPool;
+	std::vector<VkCommandBuffer> _commandBuffers;
+
+	std::vector<VkSemaphore> _imageAvailableSemaphore;
+	std::vector<VkSemaphore> _renderFinishedSemaphore;
+	std::vector<VkFence> _inFlightFences;
+	// std::vector<VkFence> _imagesInFlight;
+
+	size_t currentFrame{ 0 };
+	size_t _frameNumber{ 0 };
+
+	VmaAllocator _allocator; // vma lib allocator
+
+	// Mesh _triangleMesh;
+	// Mesh _monkeyMesh;
+
+	// callback
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
 	// functions
 	void init_window();
 	void init_vulkan();
+	void init_scene();
 	void createInstance();
-	void setupDebugMessenger();
-	void createSurface();
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-	void pickPhysicalDevice();
-	bool isDeviceSuitable(const VkPhysicalDevice& device);
-	QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& device);
-	SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice& device);
 	void createLogicalDevice();
-	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	void createSwapChain();
-	void createImageViews();
 	void createRenderPass();
 	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 	void createFrameBuffers();
-	void createCommandPool();
-	void createCommandBuffers();
+	void createCommands();
 	void createSyncObjects();
 	void mainloop();
 	void drawFrame();
 	void cleanup();
 
-	// Extensions / Layers related functions
-	bool checkValidationLayerSupport();
-	bool checkDeviceExtensionsSupport(const VkPhysicalDevice& device);
-	std::vector<const char*> getRequiredExtension();
-	VkResult CreateDebugUtilsMessengerEXT(const VkInstance& instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
-	void DestroyDebugUtilsMessengerEXT(const VkInstance& instance, VkDebugUtilsMessengerEXT pDebugMessenger, const VkAllocationCallbacks* pAllocator);
+	// Swap Chain related
+	SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice& device);
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
+	// Meshes
+	void load_meshes();
+	void upload_mesh(Mesh& mesh);
 };

@@ -24,21 +24,24 @@ target_link_libraries(vk_engine Vulkan::Vulkan)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory("Libraries/glfw-3.3.2")
+add_subdirectory("vendors/glfw-3.3.2")
 
 target_link_libraries(vk_engine glfw)
 
 # glm
-set(glm_DIR "Libraries/glm/cmake/glm")
+set(glm_DIR "vendors/glm/cmake/glm")
 find_package(glm REQUIRED FATAL_ERROR)
 
 # Define the include DIRs
 include_directories(
 	"vk_engine/src/headers"
-	"Libraries/glfw-3.3.2/include"
-	"Libraries/glm"
+	"vendors/glfw-3.3.2/include"
+	"vendors/glm"
+	"vendors/vma"
+	"vendors/tinyobjloader"
 	${Vulkan_INCLUDE_DIRS}
 )
 
 # Copy resources
 FILE(COPY vk_engine/shaders DESTINATION "${CMAKE_BINARY_DIR}")
+FILE(COPY vk_engine/assets DESTINATION "${CMAKE_BINARY_DIR}")
