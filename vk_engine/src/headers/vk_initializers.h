@@ -4,33 +4,33 @@
 namespace vk_init {
 	VkDebugUtilsMessengerCreateInfoEXT DebugMessengerCreateInfo(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
-	VkDeviceQueueCreateInfo DeviceQueueCreateInfo(uint32_t queueFamily, const float& queuePriority);
+	VkDeviceQueueCreateInfo DeviceQueueCreateInfo(uint32_t queueFamily, float& queuePriority);
 
-	VkDeviceCreateInfo DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, const VkPhysicalDeviceFeatures& deviceFeatures, const std::vector<const char*>& deviceExtensions);
+	VkDeviceCreateInfo DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures deviceFeatures, const std::vector<const char*>& deviceExtensions);
 
-	VkSwapchainCreateInfoKHR SwapChainCreateInfo(const VkSurfaceKHR& surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const QueueFamilyIndices& indices);
+	VkSwapchainCreateInfoKHR SwapChainCreateInfo(VkSurfaceKHR surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D extent, QueueFamilyIndices indices);
 
-	VkImageViewCreateInfo ImageViewCreateInfo(const VkImage& image, const VkFormat& format, const VkImageAspectFlags& aspectMask);
+	VkImageViewCreateInfo ImageViewCreateInfo(VkImage image, VkFormat format, VkImageAspectFlags aspectMask);
 
-	VkImageCreateInfo ImageCreateInfo(const VkFormat& format, const VkImageUsageFlags& usageFlags, const VkExtent3D& extent); 
+	VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent); 
 
-	VkRenderPassCreateInfo RenderPassCreateInfo(const VkAttachmentDescription* attachments, const VkSubpassDescription& subpass, const VkSubpassDependency& dependency);
+	VkRenderPassCreateInfo RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription subpass, VkSubpassDependency dependency);
 
 	VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 
 	VkPipelineVertexInputStateCreateInfo VertexInputStateCreateInfo(const std::vector<VkVertexInputBindingDescription>& bindings, const std::vector<VkVertexInputAttributeDescription>& attributes);
 
-	VkPipelineInputAssemblyStateCreateInfo InputAssemblyStateCreateInfo(const VkPrimitiveTopology& topology);
+	VkPipelineInputAssemblyStateCreateInfo InputAssemblyStateCreateInfo(VkPrimitiveTopology topology);
 
-	VkPipelineRasterizationStateCreateInfo RasterizationStateCreateInfo(const VkPolygonMode& pMode);
+	VkPipelineRasterizationStateCreateInfo RasterizationStateCreateInfo(VkPolygonMode pMode);
 
 	VkPipelineMultisampleStateCreateInfo MultisampleStateCreateInfo();
 
 	VkPipelineColorBlendAttachmentState ColorBlendAttachmentState();
 
-	VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo(const VkPipelineColorBlendAttachmentState& colorBlendAttachment);
+	VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState colorBlendAttachment);
 
-	VkFramebufferCreateInfo FramebufferCreateInfo(const VkRenderPass& renderpass, const VkExtent2D& extent);
+	VkFramebufferCreateInfo FramebufferCreateInfo(VkRenderPass renderpass, VkExtent2D extent);
 
 	VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilStateCreateInfo (bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
 }

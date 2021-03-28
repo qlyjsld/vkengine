@@ -73,14 +73,6 @@ void vk_engine::drawFrame() {
 	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
 	vkResetCommandBuffer(_commandBuffers[imageIndex], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
-	// Check if a previous frame is using this image
-	if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-		vkWaitForFences(_device, 1, &_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	}
-
-	// Mark the image as now being in use by this frame
-	_imagesInFlight[imageIndex] = _inFlightFences[currentFrame];
-
 	// rerecord the command buffer
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -94,45 +86,6 @@ void vk_engine::drawFrame() {
 	VkClearValue clearValues[] = { clearColor, depthClear };
 
 	VK_CHECK(vkBeginCommandBuffer(_commandBuffers[imageIndex], &beginInfo));
-
-	VkRenderPassBeginInfo renderPassInfo{};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = _renderpass;
-	renderPassInfo.framebuffer = _swapChainFrameBuffers[imageIndex];
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = _swapChainExtent;
-	renderPassInfo.clearValueCount = 2;
-	renderPassInfo.pClearValues = &clearValues[0];
-
-	vkCmdBeginRenderPass(_commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdBindPipeline(_commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
-
-	// bind the mesh vertex buffer with offset 0
-	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(_commandBuffers[imageIndex], 0, 1, &_monkeyMesh._vertexBuffer._buffer, &offset);
-
-	// modelView matrix
-	// camera position
-	glm::vec3 camPos = { 0.0f, 0.0f, -2.25f };
-
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
-	// camera projection
-	glm::mat4 projection = glm::perspective(glm::radians(70.0f), WIDTH / HEIGHT, 0.1f, 200.0f);
-
-	// model rotation
-	// glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(_frameNumber * 0.05f), glm::vec3(1.0f, 1.0f, 1.0f));
-	glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	model = glm::rotate(model, glm::radians(_frameNumber * 0.01f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	glm::mat4 mesh_matrix = projection * view * model;
-
-	MeshPushConsts consts;
-	consts.render_matrix = mesh_matrix;
-
-	// push the constant to the gpu
-	vkCmdPushConstants(_commandBuffers[imageIndex], _pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConsts), &consts);
 
 	// set viewport and scissor dynamically
 	VkViewport viewport{};
@@ -153,7 +106,18 @@ void vk_engine::drawFrame() {
 	vkCmdSetViewport(_commandBuffers[imageIndex], 0, 1, viewports);
 	vkCmdSetScissor(_commandBuffers[imageIndex], 0, 1, scissors);
 
-	vkCmdDraw(_commandBuffers[imageIndex], _monkeyMesh._vertices.size(), 1, 0, 0);
+	VkRenderPassBeginInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = _renderpass;
+	renderPassInfo.framebuffer = _swapChainFrameBuffers[imageIndex];
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = _swapChainExtent;
+	renderPassInfo.clearValueCount = 2;
+	renderPassInfo.pClearValues = &clearValues[0];
+
+	vkCmdBeginRenderPass(_commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	draw_objects(_commandBuffers[imageIndex], _renderables.data(), _renderables.size());
 
 	vkCmdEndRenderPass(_commandBuffers[imageIndex]);
 
@@ -194,10 +158,117 @@ void vk_engine::drawFrame() {
 	_frameNumber += 1;
 }
 
+Material* vk_engine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name) {
+	Material mat;
+	mat.pipeline = pipeline;
+	mat.pipelineLayout = layout;
+	_materials[name] = mat;
+	return &_materials[name];
+}
+
+Material* vk_engine::get_material(const std::string& name) {
+	if (_materials.find(name) != _materials.end()) {
+		return &_materials[name];
+	}
+	else {
+		return nullptr;
+	}
+}
+
+Mesh* vk_engine::get_mesh(const std::string& name) {
+	if (_meshes.find(name) != _meshes.end()) {
+		return &_meshes[name];
+	}
+	else {
+		return nullptr;
+	}
+}
+
+void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count) {
+	// modelView matrix
+	// camera position
+	glm::vec3 camPos = { 0.0f, 0.0f, -5.0f };
+
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
+	// camera projection
+	glm::mat4 projection = glm::perspective(glm::radians(70.0f), WIDTH / HEIGHT, 0.1f, 200.0f);
+	projection[1][1] *= -1;
+
+	Mesh* lastMesh = nullptr;
+	Material* lastMaterial = nullptr;
+
+	for (int i = 0; i < count; i++) {
+		glm::mat4 mesh_matrix = projection * view * first[i].transformMatrix;
+
+		if (lastMaterial != first[i].material) {
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
+			lastMaterial = first[i].material;
+		}
+
+		if (lastMesh != first[i].mesh) {
+			// bind the mesh vertex buffer with offset 0
+			VkDeviceSize offset = 0;
+			vkCmdBindVertexBuffers(cmd, 0, 1, &first[i].mesh->_vertexBuffer._buffer, &offset);
+			lastMesh = first[i].mesh;
+		}
+
+		MeshPushConsts consts;
+		consts.render_matrix = mesh_matrix;
+
+		// push the constant to the gpu
+		vkCmdPushConstants(cmd, first[i].material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConsts), &consts);
+
+		vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, 0);
+	}
+}
+
+void vk_engine::load_meshes() {
+	Mesh _monkeyMesh;
+	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
+
+	_meshes["monkey"] = _monkeyMesh;
+
+	_meshes["left_monkey"] = _monkeyMesh;
+
+	_meshes["right_monkey"] = _monkeyMesh;
+
+	upload_mesh(_meshes["monkey"]);
+	upload_mesh(_meshes["left_monkey"]);
+	upload_mesh(_meshes["right_monkey"]);
+}
+
+void vk_engine::upload_mesh(Mesh& mesh) {
+	// allocate Vertex Buffer
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	// total size in bytes
+	bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+	// let vma know this buffer is gonna written by cpu and read by gpu
+	VmaAllocationCreateInfo allocationInfo{};
+	allocationInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
+
+	_deletionQueue.push_function([&]() {
+		vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+		});
+
+	// copy vertex data
+	void* data;
+	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+
+	memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+
+	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+}
+
 // run the engine
 void vk_engine::run() {
 	init_window();
 	init_vulkan();
+	init_scene();
 	mainloop();
 	cleanup();
 }
@@ -208,7 +279,7 @@ void vk_engine::init_window() {
 		throw std::runtime_error("GLFW initialization failed!");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	// glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	_window = glfwCreateWindow(WIDTH, HEIGHT, "vk_engine", NULL, NULL);
 }
@@ -237,6 +308,23 @@ void vk_engine::init_vulkan() {
 	createSyncObjects();
 
 	load_meshes();
+}
+
+void vk_engine::init_scene() {
+	RenderObject monkey;
+	monkey.mesh = get_mesh("monkey");
+	monkey.material = get_material("defaultmesh");
+	monkey.transformMatrix = glm::mat4{ 1.0f };
+
+	_renderables.push_back(monkey);
+
+	monkey.mesh = get_mesh("left_monkey");
+	monkey.transformMatrix = glm::translate(monkey.transformMatrix, glm::vec3(-3, 0, 0));
+	_renderables.push_back(monkey);
+
+	monkey.mesh = get_mesh("right_monkey");
+	monkey.transformMatrix = glm::translate(monkey.transformMatrix, glm::vec3(6, 0, 0));
+	_renderables.push_back(monkey);
 }
 
 void vk_engine::createInstance() {
@@ -555,6 +643,8 @@ void vk_engine::createGraphicsPipeline() {
 
 	VK_CHECK(vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 
+	create_material(_graphicsPipeline, _pipelineLayout, "defaultmesh");
+
 	_deletionQueue.push_function([=](){
 		vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 	});
@@ -621,7 +711,7 @@ void vk_engine::createSyncObjects() {
 	_imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
 	_renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
 	_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-	_imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
+	// _imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -711,48 +801,4 @@ VkExtent2D vk_engine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
 
 		return actualExtent;
 	}
-}
-
-void vk_engine::load_meshes() {
-	_triangleMesh._vertices.resize(3);
-
-	_triangleMesh._vertices[0].position = { 0.0f, -0.5f, 0.0f };
-	_triangleMesh._vertices[1].position = { 0.5f, 0.5f, 0.0f };
-	_triangleMesh._vertices[2].position = { -0.5f, 0.5f, 0.0f };
-
-	_triangleMesh._vertices[0].color = { 1.0f, 0.0f, 1.0f };
-	_triangleMesh._vertices[1].color = { 0.0f, 1.0f, 0.0f };
-	_triangleMesh._vertices[2].color = { 1.0f, 0.0f, 1.0f };
-
-	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
-	
-	upload_mesh(_triangleMesh);
-	upload_mesh(_monkeyMesh);
-}
-
-void vk_engine::upload_mesh(Mesh& mesh) {
-	// allocate Vertex Buffer
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	// total size in bytes
-	bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
-	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-	// let vma know this buffer is gonna written by cpu and read by gpu
-	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
-
-	_deletionQueue.push_function([&](){
-		vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
-	});
-
-	// copy vertex data
-	void* data;
-	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
-
-	memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
-
-	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
 }

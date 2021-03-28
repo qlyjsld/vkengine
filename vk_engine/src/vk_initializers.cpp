@@ -12,7 +12,7 @@ VkDebugUtilsMessengerCreateInfoEXT vk_init::DebugMessengerCreateInfo(PFN_vkDebug
 	return (createInfo);
 }
 
-VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(uint32_t queueFamily, const float& queuePriority) {
+VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(uint32_t queueFamily, float& queuePriority) {
 	VkDeviceQueueCreateInfo queueCreateInfo{};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.queueFamilyIndex = queueFamily;
@@ -22,7 +22,7 @@ VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(uint32_t queueFamily, con
 	return (queueCreateInfo);
 }
 
-VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, const VkPhysicalDeviceFeatures& deviceFeatures, const std::vector<const char*>& deviceExtensions) {
+VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures deviceFeatures, const std::vector<const char*>& deviceExtensions) {
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -39,7 +39,7 @@ VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCrea
 	return (deviceCreateInfo);
 }
 
-VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const QueueFamilyIndices& indices) {
+VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(VkSurfaceKHR surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D extent, QueueFamilyIndices indices) {
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface;
@@ -73,7 +73,7 @@ VkSwapchainCreateInfoKHR vk_init::SwapChainCreateInfo(const VkSurfaceKHR& surfac
 	return createInfo;
 }
 
-VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const VkFormat& format, const VkImageAspectFlags& aspectMask) {
+VkImageViewCreateInfo vk_init::ImageViewCreateInfo(VkImage image, VkFormat format, VkImageAspectFlags aspectMask) {
 	VkImageViewCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	createInfo.pNext = nullptr;
@@ -96,7 +96,7 @@ VkImageViewCreateInfo vk_init::ImageViewCreateInfo(const VkImage& image, const V
 	return createInfo;
 }
 
-VkImageCreateInfo vk_init::ImageCreateInfo(const VkFormat& format, const VkImageUsageFlags& usageFlags, const VkExtent3D& extent) {
+VkImageCreateInfo vk_init::ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent) {
 	VkImageCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	info.pNext = nullptr;
@@ -115,7 +115,7 @@ VkImageCreateInfo vk_init::ImageCreateInfo(const VkFormat& format, const VkImage
 	return info;
 }
 
-VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(const VkAttachmentDescription* attachments, const VkSubpassDescription& subpass, const VkSubpassDependency& dependency) {
+VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription subpass, VkSubpassDependency dependency) {
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 2;
@@ -150,7 +150,7 @@ VkPipelineVertexInputStateCreateInfo vk_init::VertexInputStateCreateInfo(const s
 	return vertexInputInfo;
 }
 
-VkPipelineInputAssemblyStateCreateInfo vk_init::InputAssemblyStateCreateInfo(const VkPrimitiveTopology& topology) {
+VkPipelineInputAssemblyStateCreateInfo vk_init::InputAssemblyStateCreateInfo(VkPrimitiveTopology topology) {
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = topology;
@@ -159,7 +159,7 @@ VkPipelineInputAssemblyStateCreateInfo vk_init::InputAssemblyStateCreateInfo(con
 	return inputAssembly;
 }
 
-VkPipelineRasterizationStateCreateInfo vk_init::RasterizationStateCreateInfo(const VkPolygonMode& pMode) {
+VkPipelineRasterizationStateCreateInfo vk_init::RasterizationStateCreateInfo(VkPolygonMode pMode) {
 	VkPipelineRasterizationStateCreateInfo rasterizer{};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
@@ -203,7 +203,7 @@ VkPipelineColorBlendAttachmentState vk_init::ColorBlendAttachmentState() {
 	return colorBlendAttachment;
 }
 
-VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(const VkPipelineColorBlendAttachmentState& colorBlendAttachment) {
+VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState colorBlendAttachment) {
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;
@@ -218,7 +218,7 @@ VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(const VkP
 	return colorBlending;
 }
 
-VkFramebufferCreateInfo vk_init::FramebufferCreateInfo(const VkRenderPass& renderpass, const VkExtent2D& extent) {
+VkFramebufferCreateInfo vk_init::FramebufferCreateInfo(VkRenderPass renderpass, VkExtent2D extent) {
 	VkFramebufferCreateInfo framebufferInfo{};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebufferInfo.renderPass = renderpass;

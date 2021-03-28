@@ -3,15 +3,15 @@
 
 // Supports / Extensions related
 namespace vk_support {
-	std::vector<const char*> getRequiredExtension(const bool& enableValidationLayers);
+	std::vector<const char*> getRequiredExtension(bool enableValidationLayers);
 
 	bool checkValidationLayerSupport();
 
-	bool checkDeviceExtensionsSupport(const VkPhysicalDevice& device);
+	bool checkDeviceExtensionsSupport(VkPhysicalDevice device);
 
-	VkResult CreateDebugUtilsMessengerEXT(const VkInstance& instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
+	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 
-	void DestroyDebugUtilsMessengerEXT(const VkInstance& instance, VkDebugUtilsMessengerEXT pDebugMessenger, const VkAllocationCallbacks* pAllocator);
+	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT pDebugMessenger, VkAllocationCallbacks* pAllocator);
 
-	QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
 }
