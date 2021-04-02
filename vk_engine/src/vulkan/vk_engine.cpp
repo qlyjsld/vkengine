@@ -10,6 +10,8 @@
 #include "vk_initializers.h"
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "Camera.h"
+
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
 #else
@@ -51,6 +53,12 @@ static std::vector<char> readfile(const std::string & filename) {
 	return buffer;
 }
 
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		glfwSetWindowShouldClose(window, 1);
+	}
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL vk_engine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
@@ -67,6 +75,28 @@ void vk_engine::mainloop() {
 }
 
 void vk_engine::drawFrame() {
+	// handle user's input
+	float programTime = glfwGetTime();
+	float frametime = (programTime - lastFrame) * 5.0f;
+	lastFrame = programTime;
+
+	double mouse_xpos;
+	double mouse_ypos;
+
+	glfwGetCursorPos(_window, &mouse_xpos, &mouse_ypos);
+	_camera->updateCameraFront(mouse_xpos, mouse_ypos);
+
+	_camera->updateCameraPos('m', frametime);
+
+	if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS)
+		_camera->updateCameraPos('w', frametime);
+	if (glfwGetKey(_window, GLFW_KEY_A) == GLFW_PRESS)
+		_camera->updateCameraPos('a', frametime);
+	if (glfwGetKey(_window, GLFW_KEY_S) == GLFW_PRESS)
+		_camera->updateCameraPos('s', frametime);
+	if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS)
+		_camera->updateCameraPos('d', frametime);
+
 	vkWaitForFences(_device, 1, &_inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
@@ -185,20 +215,11 @@ Mesh* vk_engine::get_mesh(const std::string& name) {
 }
 
 void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count) {
-	// modelView matrix
-	// camera position
-	glm::vec3 camPos = { 0.0f, 0.0f, -5.0f };
-
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
-	// camera projection
-	glm::mat4 projection = glm::perspective(glm::radians(70.0f), WIDTH / HEIGHT, 0.1f, 200.0f);
-	projection[1][1] *= -1;
-
 	Mesh* lastMesh = nullptr;
 	Material* lastMaterial = nullptr;
 
 	for (int i = 0; i < count; i++) {
-		glm::mat4 mesh_matrix = projection * view * first[i].transformMatrix;
+		glm::mat4 mesh_matrix = _camera->modelViewMatrix() * first[i].transformMatrix;
 
 		if (lastMaterial != first[i].material) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
@@ -267,6 +288,7 @@ void vk_engine::upload_mesh(Mesh& mesh) {
 // run the engine
 void vk_engine::run() {
 	init_window();
+	init_input();
 	init_vulkan();
 	init_scene();
 	mainloop();
@@ -282,6 +304,12 @@ void vk_engine::init_window() {
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	_window = glfwCreateWindow(WIDTH, HEIGHT, "vk_engine", NULL, NULL);
+}
+
+void vk_engine::init_input() {
+	glfwSetKeyCallback(_window, key_callback);
+	_camera = new Camera{ WIDTH, HEIGHT };
+	glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 // initialize vulkan such as _instance, _device

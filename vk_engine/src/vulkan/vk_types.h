@@ -3,7 +3,7 @@
 #include <vector>
 #include <optional>
 
-#include "vma/vk_mem_alloc.h"
+#include "vk_mem_alloc.h"
 
 struct AllocatedBuffer {
 	VkBuffer _buffer;

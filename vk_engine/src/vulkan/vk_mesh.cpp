@@ -104,7 +104,7 @@ bool Mesh::load_from_obj(const char* filename) {
 
 	// Loop over shapes
 	for (size_t s = 0; s < shapes.size(); s++) {
-		std::async(std::launch::async, load_shape, attrib, shapes[s], std::ref(_vertices));
+		auto task = std::async(std::launch::async, load_shape, attrib, shapes[s], std::ref(_vertices));
 	}
 
 	std::cout << "finished loading: " << filename << std::endl;

@@ -55,6 +55,9 @@ public:
 	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
 
 private:
+	// camera in use
+	struct Camera* _camera{ nullptr };
+
 	// handles
 	struct GLFWwindow* _window{ nullptr };
 	DeletionQueue _deletionQueue;
@@ -95,6 +98,7 @@ private:
 
 	size_t currentFrame{ 0 };
 	size_t _frameNumber{ 0 };
+	float lastFrame{ 0 };
 
 	VmaAllocator _allocator; // vma lib allocator
 
@@ -106,6 +110,7 @@ private:
 
 	// functions
 	void init_window();
+	void init_input();
 	void init_vulkan();
 	void init_scene();
 	void createInstance();
