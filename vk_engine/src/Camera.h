@@ -72,11 +72,14 @@ public:
 	glm::mat4 modelViewMatrix();
 
 private:
-	double last_mouse_xpos{ 0 };
-	double last_mouse_ypos{ 0 };
+	double last_mouse_xpos{ 0.0 };
+	double last_mouse_ypos{ 0.0 };
 
-	float currentFrame{ 0 };
-	float lastFrame{ 0 };
+	float currentFrame{ 0.0f };
+	float lastFrame{ 0.0f };
+
+	float yaw{ 0.0f };
+	float pitch{ 0.0f };
 
 	void release() {
 		// release resources
