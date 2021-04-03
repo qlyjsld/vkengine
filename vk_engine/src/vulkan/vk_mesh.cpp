@@ -73,7 +73,9 @@ void load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape, 
 			vertex.normal.x = ny;
 			vertex.normal.x = nz;
 
-			vertex.color = vertex.position;
+			vertex.color = vertex.normal;
+			// vertex.color = vertex.position;
+			// vertex.color = glm::vec3((vertex.position.x + vertex.position.y + vertex.position.z) / 3);
 
 			std::lock_guard<std::mutex> lock(vector_mutex);
 			vertices.push_back(std::move(vertex));

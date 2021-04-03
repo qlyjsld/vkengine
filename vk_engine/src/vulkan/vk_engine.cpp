@@ -244,18 +244,24 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 }
 
 void vk_engine::load_meshes() {
-	Mesh _monkeyMesh;
-	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
+	/* Mesh monkeyMesh;
+	monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
 
-	_meshes["monkey"] = _monkeyMesh;
+	_meshes["monkey"] = monkeyMesh;
 
-	_meshes["left_monkey"] = _monkeyMesh;
+	_meshes["left_monkey"] = monkeyMesh;
 
-	_meshes["right_monkey"] = _monkeyMesh;
+	_meshes["right_monkey"] = monkeyMesh;
 
 	upload_mesh(_meshes["monkey"]);
 	upload_mesh(_meshes["left_monkey"]);
-	upload_mesh(_meshes["right_monkey"]);
+	upload_mesh(_meshes["right_monkey"]); */
+
+	Mesh bus;
+
+	bus.load_from_obj("assets/gen bus 2.obj");
+	_meshes["bus"] = bus;
+	upload_mesh(_meshes["bus"]);
 }
 
 void vk_engine::upload_mesh(Mesh& mesh) {
@@ -339,7 +345,7 @@ void vk_engine::init_vulkan() {
 }
 
 void vk_engine::init_scene() {
-	RenderObject monkey;
+	/* RenderObject monkey;
 	monkey.mesh = get_mesh("monkey");
 	monkey.material = get_material("defaultmesh");
 	monkey.transformMatrix = glm::mat4{ 1.0f };
@@ -352,7 +358,14 @@ void vk_engine::init_scene() {
 
 	monkey.mesh = get_mesh("right_monkey");
 	monkey.transformMatrix = glm::translate(monkey.transformMatrix, glm::vec3(6, 0, 0));
-	_renderables.push_back(monkey);
+	_renderables.push_back(monkey);*/
+
+	RenderObject bus;
+	bus.mesh = get_mesh("bus");
+	bus.material = get_material("defaultmesh");
+	bus.transformMatrix = glm::mat4{ 1.0f };
+
+	_renderables.push_back(bus);
 }
 
 void vk_engine::createInstance() {
