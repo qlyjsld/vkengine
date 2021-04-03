@@ -33,7 +33,7 @@ const float HEIGHT = 900.0f;
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
-const VkClearValue clearColor = { 0.0f, 0.75f, 0.5f, 1.0f };
+const VkClearValue clearColor = { 0.25f, 0.25f, 0.25f, 1.0f };
 
 static std::vector<char> readfile(const std::string & filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
