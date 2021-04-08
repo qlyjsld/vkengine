@@ -22,7 +22,7 @@ VkDeviceQueueCreateInfo vk_init::DeviceQueueCreateInfo(uint32_t queueFamily, flo
 	return (queueCreateInfo);
 }
 
-VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures deviceFeatures, const std::vector<const char*>& deviceExtensions) {
+VkDeviceCreateInfo vk_init::DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures& deviceFeatures, const std::vector<const char*>& deviceExtensions) {
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -115,7 +115,7 @@ VkImageCreateInfo vk_init::ImageCreateInfo(VkFormat format, VkImageUsageFlags us
 	return info;
 }
 
-VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription subpass, VkSubpassDependency dependency) {
+VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription& subpass, VkSubpassDependency& dependency) {
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 2;
@@ -203,7 +203,7 @@ VkPipelineColorBlendAttachmentState vk_init::ColorBlendAttachmentState() {
 	return colorBlendAttachment;
 }
 
-VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState colorBlendAttachment) {
+VkPipelineColorBlendStateCreateInfo vk_init::ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState& colorBlendAttachment) {
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;

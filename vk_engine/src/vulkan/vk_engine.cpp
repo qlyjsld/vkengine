@@ -244,22 +244,12 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 }
 
 void vk_engine::load_meshes() {
-	/* Mesh monkeyMesh;
-	monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
-
-	_meshes["monkey"] = monkeyMesh;
-
-	_meshes["left_monkey"] = monkeyMesh;
-
-	_meshes["right_monkey"] = monkeyMesh;
-
-	upload_mesh(_meshes["monkey"]);
-	upload_mesh(_meshes["left_monkey"]);
-	upload_mesh(_meshes["right_monkey"]); */
-
 	Mesh bus;
+	if (!bus.load_from_obj("assets/gen-bus-2.obj")){
+		std::cout << "failed to load obj!" << std::endl;
+		abort();
+	}
 
-	bus.load_from_obj("assets/gen bus 2.obj");
 	_meshes["bus"] = bus;
 	upload_mesh(_meshes["bus"]);
 }
