@@ -6,7 +6,7 @@ namespace vk_init {
 
 	VkDeviceQueueCreateInfo DeviceQueueCreateInfo(uint32_t queueFamily, float& queuePriority);
 
-	VkDeviceCreateInfo DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures deviceFeatures, const std::vector<const char*>& deviceExtensions);
+	VkDeviceCreateInfo DeviceCreateInfo(const std::vector<VkDeviceQueueCreateInfo>& queueCreateInfos, VkPhysicalDeviceFeatures& deviceFeatures, const std::vector<const char*>& deviceExtensions);
 
 	VkSwapchainCreateInfoKHR SwapChainCreateInfo(VkSurfaceKHR surface, uint32_t image_count, const SwapChainSupportDetails& swapChainSupport, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D extent, QueueFamilyIndices indices);
 
@@ -14,7 +14,7 @@ namespace vk_init {
 
 	VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent); 
 
-	VkRenderPassCreateInfo RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription subpass, VkSubpassDependency dependency);
+	VkRenderPassCreateInfo RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription& subpass, VkSubpassDependency& dependency);
 
 	VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 
@@ -28,7 +28,7 @@ namespace vk_init {
 
 	VkPipelineColorBlendAttachmentState ColorBlendAttachmentState();
 
-	VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState colorBlendAttachment);
+	VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo(VkPipelineColorBlendAttachmentState& colorBlendAttachment);
 
 	VkFramebufferCreateInfo FramebufferCreateInfo(VkRenderPass renderpass, VkExtent2D extent);
 
