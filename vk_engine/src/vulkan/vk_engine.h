@@ -5,9 +5,24 @@
 #include <functional>
 #include <glm/glm.hpp>
 
-struct MeshPushConsts {
-	glm::vec4 data;
-	glm::mat4 render_matrix;
+constexpr unsigned int FRAME_OVERLAP = 2;
+
+class PipelineBuilder {
+public:
+
+	VkPipelineShaderStageCreateInfo* _shaderStages;
+	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+	// VkViewport _viewport;
+	// VkRect2D _scissor;
+	VkPipelineDynamicStateCreateInfo _dynamicState;
+	VkPipelineViewportStateCreateInfo _viewportState;
+	VkPipelineRasterizationStateCreateInfo _rasterizer;
+	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+	VkPipelineMultisampleStateCreateInfo _multisampling;
+	VkPipelineLayout _pipelineLayout;
+	VkPipelineDepthStencilStateCreateInfo _depthStencil;
+	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 };
 
 struct DeletionQueue {
@@ -23,6 +38,30 @@ struct DeletionQueue {
 		}
 		deletors.clear();
 	}
+};
+
+struct GPUCameraData {
+	glm::mat4 view;
+	glm::mat4 projection;
+	glm::mat4 viewproj;
+};
+
+struct FrameData {
+	VkCommandPool _commandPool;
+	VkCommandBuffer _maincommandBuffer;
+
+	VkSemaphore _imageAvailableSemaphore;
+	VkSemaphore _renderFinishedSemaphore;
+	VkFence _inFlightFences;
+
+	AllocatedBuffer cameraBuffer;
+
+	VkDescriptorSet globalDescriptor;
+};
+
+struct MeshPushConsts {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
 };
 
 struct Material {
@@ -52,7 +91,7 @@ public:
 
 	Mesh* get_mesh(const std::string& name);
 
-	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
+	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame);
 
 private:
 	// camera in use
@@ -62,16 +101,19 @@ private:
 	struct GLFWwindow* _window{ nullptr };
 	DeletionQueue _deletionQueue;
 
+	// instance and device
 	VkInstance _instance;
 	VkDebugUtilsMessengerEXT _debugmessager;
 	VkSurfaceKHR _surface;
 	VkPhysicalDevice _physicalDevice;
 	VkDevice _device;
 
+	// queue
 	VkQueue _graphicsQueue;
 	VkQueue _presentQueue;
 	QueueFamilyIndices _indices;
 
+	// swapchain
 	VkSwapchainKHR _swapChain;
 	std::vector<VkImage> _swapChainImages;
 	VkFormat _swapChainImageFormat;
@@ -81,20 +123,17 @@ private:
 	AllocatedImage _depthImage;
 	VkFormat _depthFormat;
 
+	// renderpass
 	VkRenderPass _renderpass;
 
+	// pipeline
 	VkPipelineLayout _pipelineLayout;
 	VkPipeline _graphicsPipeline;
 
+	// framebuffer
 	std::vector<VkFramebuffer> _swapChainFrameBuffers;
 
-	VkCommandPool _commandPool;
-	std::vector<VkCommandBuffer> _commandBuffers;
-
-	std::vector<VkSemaphore> _imageAvailableSemaphore;
-	std::vector<VkSemaphore> _renderFinishedSemaphore;
-	std::vector<VkFence> _inFlightFences;
-	// std::vector<VkFence> _imagesInFlight;
+	FrameData _frames[FRAME_OVERLAP];
 
 	size_t currentFrame{ 0 };
 	size_t _frameNumber{ 0 };
@@ -102,26 +141,28 @@ private:
 
 	VmaAllocator _allocator; // vma lib allocator
 
-	// Mesh _triangleMesh;
-	// Mesh _monkeyMesh;
-
 	// callback
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
-	// functions
+	// init functions
 	void init_window();
 	void init_input();
 	void init_vulkan();
 	void init_scene();
+
+	// creatre functions
 	void createInstance();
 	void createLogicalDevice();
 	void createSwapChain();
 	void createRenderPass();
+	void createDescriptors();
 	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 	void createFrameBuffers();
 	void createCommands();
 	void createSyncObjects();
+
+	// mainloop functions
 	void mainloop();
 	void drawFrame();
 	void cleanup();
@@ -132,7 +173,13 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
-	// Meshes
+	// meshes
 	void load_meshes();
 	void upload_mesh(Mesh& mesh);
+
+	// descriptor sets
+	VkDescriptorSetLayout _globalSetLayout;
+	VkDescriptorPool _descriptorPool;
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 };
