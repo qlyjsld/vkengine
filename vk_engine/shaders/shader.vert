@@ -7,8 +7,15 @@ layout (location = 2) in vec3 vNormal;
 
 layout (location = 0) out vec3 fragColor;
 
+layout (set = 0, binding = 0) uniform CameraBuffer
+{
+	mat4 view;
+	mat4 proj;
+	mat4 viewproj;
+} cameraData;
+
 //push constants block
-layout(push_constant) uniform constants
+layout (push_constant) uniform constants
 {
 	vec4 data;
 	mat4 render_matrix;
@@ -16,6 +23,7 @@ layout(push_constant) uniform constants
 
 void main() 
 {
-	gl_Position = PushConstants.render_matrix * vec4(vPosition, 1.0f);
+	mat4 transformMatrix = (cameraData.viewproj * PushConstants.render_matrix);
+	gl_Position = transformMatrix * vec4(vPosition, 1.0f);
 	fragColor = vColor;
 }
