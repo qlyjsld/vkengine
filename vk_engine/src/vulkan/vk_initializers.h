@@ -14,6 +14,10 @@ namespace vk_init {
 
 	VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent); 
 
+	VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
+
+	VkWriteDescriptorSet WriteDescriptorSet(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding);
+
 	VkRenderPassCreateInfo RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription& subpass, VkSubpassDependency& dependency);
 
 	VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();

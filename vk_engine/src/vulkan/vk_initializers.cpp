@@ -115,6 +115,30 @@ VkImageCreateInfo vk_init::ImageCreateInfo(VkFormat format, VkImageUsageFlags us
 	return info;
 }
 
+VkDescriptorSetLayoutBinding vk_init::DescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding) {
+	VkDescriptorSetLayoutBinding layoutBinding{};
+	layoutBinding.binding = binding;
+	layoutBinding.descriptorCount = 1;
+	layoutBinding.descriptorType = descriptorType;
+	layoutBinding.stageFlags = stageFlag;
+
+	return layoutBinding;
+}
+
+VkWriteDescriptorSet vk_init::WriteDescriptorSet(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding) {
+	VkWriteDescriptorSet setwrite{};
+	setwrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	setwrite.pNext = nullptr;
+
+	setwrite.dstBinding = binding;
+	setwrite.dstSet = dstSet;
+	setwrite.descriptorCount = 1;
+	setwrite.descriptorType = descriptorType;
+	setwrite.pBufferInfo = bufferInfo;
+
+	return setwrite;
+}
+
 VkRenderPassCreateInfo vk_init::RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription& subpass, VkSubpassDependency& dependency) {
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
