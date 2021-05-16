@@ -46,6 +46,14 @@ struct GPUCameraData {
 	glm::mat4 viewproj;
 };
 
+struct GPUSceneData {
+	glm::vec4 fogColor; // w is for exponent
+	glm::vec4 fogDistances; // x for min, y for max, zw unused
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection; // w for sun power
+	glm::vec4 sunlightColor;
+};
+
 struct FrameData {
 	VkCommandPool _commandPool;
 	VkCommandBuffer _maincommandBuffer;
@@ -54,9 +62,12 @@ struct FrameData {
 	VkSemaphore _renderFinishedSemaphore;
 	VkFence _inFlightFences;
 
-	AllocatedBuffer cameraBuffer;
+	AllocatedBuffer _objectBuffer;
+	VkDescriptorSet _objectDescriptor;
+};
 
-	VkDescriptorSet globalDescriptor;
+struct GPUObjectData {
+	glm::mat4 modelMatrix;
 };
 
 struct MeshPushConsts {
@@ -133,6 +144,8 @@ private:
 	// framebuffer
 	std::vector<VkFramebuffer> _swapChainFrameBuffers;
 
+	VkPhysicalDeviceProperties _deviceProperties;
+
 	FrameData _frames[FRAME_OVERLAP];
 
 	size_t currentFrame{ 0 };
@@ -179,7 +192,19 @@ private:
 
 	// descriptor sets
 	VkDescriptorSetLayout _globalSetLayout;
+	VkDescriptorSetLayout _objectSetLayout;
 	VkDescriptorPool _descriptorPool;
 
+	// buffer for gpu
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	// scene parameters
+	GPUSceneData _sceneParameters;
+	AllocatedBuffer _sceneParametersBuffer;
+	GPUCameraData _cameraParameters;
+	AllocatedBuffer _cameraParametersBuffer;
+
+	VkDescriptorSet _globalDescriptor;
+
+	size_t pad_uniform_buffer_size(size_t originalSize);
 };
