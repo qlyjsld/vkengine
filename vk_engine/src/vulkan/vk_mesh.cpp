@@ -39,9 +39,17 @@ VertexInputDescription Vertex::get_vertex_description() {
 	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
 	normalAttribute.offset = offsetof(Vertex, normal);
 
+	// Position will be stored at Location 3
+	VkVertexInputAttributeDescription uvAttribute{};
+	uvAttribute.binding = 0;
+	uvAttribute.location = 3;
+	uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+	uvAttribute.offset = offsetof(Vertex, uv);
+
 	description.attributes.push_back(positionAttribute);
 	description.attributes.push_back(colorAttribute);
 	description.attributes.push_back(normalAttribute);
+	description.attributes.push_back(uvAttribute);
 
 	return description;
 }
@@ -74,8 +82,13 @@ void load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape, 
 			vertex.normal.x = nz;
 
 			vertex.color = vertex.normal;
-			// vertex.color = vertex.position;
-			// vertex.color = glm::vec3((vertex.position.x + vertex.position.y + vertex.position.z) / 3);
+
+			// vertex uv
+			tinyobj::real_t ux = attrib.texcoords[2 * idx.texcoord_index + 0];
+			tinyobj::real_t uy = attrib.texcoords[2 * idx.texcoord_index + 1];
+
+			vertex.uv.x = ux;
+			vertex.uv.y = 1 - uy;
 
 			std::lock_guard<std::mutex> lock(vector_mutex);
 			vertices.push_back(std::move(vertex));

@@ -41,6 +41,7 @@ include_directories(
 	"vendors/glfw-3.3.2/include"
 	"vendors/glm"
 	"vendors/vma"
+	"vendors/stb_image"
 	"vendors/tinyobjloader"
 	${Vulkan_INCLUDE_DIRS}
 )
