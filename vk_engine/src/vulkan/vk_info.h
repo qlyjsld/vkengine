@@ -1,7 +1,7 @@
 #pragma once
-#include "vk_types.h"
+#include "vk_type.h"
 
-namespace vk_init {
+namespace vk_info {
 	VkDebugUtilsMessengerCreateInfoEXT DebugMessengerCreateInfo(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
 	VkDeviceQueueCreateInfo DeviceQueueCreateInfo(uint32_t queueFamily, float& queuePriority);

@@ -8,7 +8,8 @@
 
 #define VMA_IMPLEMENTATION
 #include "vk_engine.h"
-#include "vk_initializers.h"
+#include "vk_info.h"
+#include "vk_texture.h"
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "Camera.h"
@@ -29,8 +30,8 @@ const bool enableValidationLayers = true;
 		}\
 	} while (0);
 
-const float WIDTH = 1600.0f;
-const float HEIGHT = 900.0f;
+constexpr float WIDTH = 1600.0f;
+constexpr float HEIGHT = 900.0f;
 
 constexpr unsigned int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -73,8 +74,8 @@ void vk_engine::drawFrame() {
 	// auto start = std::chrono::steady_clock::now();
 	// handle user's input
 	float programTime = glfwGetTime();
-	float frametime = (programTime - lastFrame) * 5.0f;
-	lastFrame = programTime;
+	float frametime = (programTime - _lastFrame) * 5.0f;
+	_lastFrame = programTime;
 
 	double mouse_xpos;
 	double mouse_ypos;
@@ -93,10 +94,11 @@ void vk_engine::drawFrame() {
 	if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS)
 		_camera->updateCameraPos('d', frametime);
 
-	vkWaitForFences(_device, 1, &_frames[currentFrame]._inFlightFences, VK_TRUE, UINT64_MAX);
+	vkWaitForFences(_device, 1, &_frames[_currentFrame]._inFlightFences, VK_TRUE, UINT64_MAX);
+	vkResetFences(_device, 1, &_frames[_currentFrame]._inFlightFences);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _frames[currentFrame]._imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _frames[_currentFrame]._imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 	vkResetCommandBuffer(_frames[imageIndex]._maincommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
 	// rerecord the command buffer
@@ -152,7 +154,7 @@ void vk_engine::drawFrame() {
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { _frames[currentFrame]._imageAvailableSemaphore };
+	VkSemaphore waitSemaphores[] = { _frames[_currentFrame]._imageAvailableSemaphore };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
@@ -160,12 +162,11 @@ void vk_engine::drawFrame() {
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &_frames[imageIndex]._maincommandBuffer;
 
-	VkSemaphore signalSemaphores[] = { _frames[currentFrame]._renderFinishedSemaphore };
+	VkSemaphore signalSemaphores[] = { _frames[_currentFrame]._renderFinishedSemaphore };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	vkResetFences(_device, 1, &_frames[currentFrame]._inFlightFences);
-	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _frames[currentFrame]._inFlightFences));
+	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _frames[_currentFrame]._inFlightFences));
 
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -180,12 +181,75 @@ void vk_engine::drawFrame() {
 
 	vkQueuePresentKHR(_presentQueue, &presentInfo);
 
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	_frameNumber += 1;
 
 	/* auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end - start;
 	std::cout << "frame time: " << elapsed_seconds.count() * 100 << "ms\n"; */
+}
+
+void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
+	_cameraParameters.projection = _camera->projection;
+	_cameraParameters.view = _camera->view;
+	_cameraParameters.viewproj = _camera->modelViewMatrix();
+
+	int frameIndex = _frameNumber % FRAME_OVERLAP;
+
+	char* camdata;
+	vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
+	camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex;
+	memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
+	vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
+
+	float framed = (_frameNumber / 120.0f);
+	_sceneParameters.ambientColor = { 0.2f, 0.5f, 0.2f, 1.0f };
+
+	char* sceneData;
+	vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
+	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
+	memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
+	vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
+
+	void* objData;
+	vmaMapMemory(_allocator, frame._objectBuffer._allocation, &objData);
+
+	GPUObjectData* objectSSBO = (GPUObjectData*)objData;
+
+	for (int i = 0; i < count; i++) {
+		RenderObject& object = first[i];
+		objectSSBO[i].modelMatrix = object.transformMatrix;
+	}
+
+	vmaUnmapMemory(_allocator, frame._objectBuffer._allocation);
+
+	Mesh* lastMesh = nullptr;
+	Material* lastMaterial = nullptr;
+
+	for (int i = 0; i < count; i++) {
+		if (lastMaterial != first[i].material) {
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
+			lastMaterial = first[i].material;
+
+			uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex, pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex };
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 0, 1, &_globalDescriptor, 2, uniform_offset);
+
+			//object data descriptor
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 1, 1, &_frames[i]._objectDescriptor, 0, nullptr);
+
+			//object data descriptor
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 2, 1, &first[i].material->textureSet, 0, nullptr);
+		}
+
+		if (lastMesh != first[i].mesh) {
+			// bind the mesh vertex buffer with offset 0
+			VkDeviceSize offset = 0;
+			vkCmdBindVertexBuffers(cmd, 0, 1, &first[i].mesh->_vertexBuffer._buffer, &offset);
+			lastMesh = first[i].mesh;
+		}
+
+		vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, i);
+	}
 }
 
 // run the engine
@@ -238,32 +302,60 @@ void vk_engine::init_vulkan() {
 	createFrameBuffers();
 	createCommands();
 	createSyncObjects();
-
-	load_meshes();
 }
 
 void vk_engine::init_scene() {
-	/* RenderObject monkey;
-	monkey.mesh = get_mesh("monkey");
-	monkey.material = get_material("defaultmesh");
-	monkey.transformMatrix = glm::mat4{ 1.0f };
+	load_meshes();
+	load_textures();
 
-	_renderables.push_back(monkey);
+	RenderObject lostEmpire;
+	lostEmpire.mesh = get_mesh("lostEmpire");
+	lostEmpire.material = get_material("defaultmesh");
+	lostEmpire.transformMatrix = glm::mat4{ 1.0f };
 
-	monkey.mesh = get_mesh("left_monkey");
-	monkey.transformMatrix = glm::translate(monkey.transformMatrix, glm::vec3(-3, 0, 0));
-	_renderables.push_back(monkey);
+	_renderables.push_back(lostEmpire);
 
-	monkey.mesh = get_mesh("right_monkey");
-	monkey.transformMatrix = glm::translate(monkey.transformMatrix, glm::vec3(6, 0, 0));
-	_renderables.push_back(monkey);*/
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.pNext = nullptr;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-	RenderObject bus;
-	bus.mesh = get_mesh("bus");
-	bus.material = get_material("defaultmesh");
-	bus.transformMatrix = glm::mat4{ 1.0f };
+	VkSampler blockySampler{};
+	vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
 
-	_renderables.push_back(bus);
+	_deletionQueue.push_function([=]() {
+		vkDestroySampler(_device, blockySampler, nullptr);
+	});
+
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.pNext = nullptr;
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = _descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &_textureSetLayout;
+
+	vkAllocateDescriptorSets(_device, &allocInfo, &lostEmpire.material->textureSet);
+
+	VkDescriptorImageInfo imageBufferInfo{};
+	imageBufferInfo.sampler = blockySampler;
+	imageBufferInfo.imageView = _textures["lostEmpire"].imageView;
+	imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkWriteDescriptorSet texture1{};
+	texture1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	texture1.pNext = nullptr;
+
+	texture1.dstBinding = 0;
+	texture1.dstSet = lostEmpire.material->textureSet;
+	texture1.descriptorCount = 1;
+	texture1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	texture1.pImageInfo = &imageBufferInfo;
+
+	vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
 }
 
 void vk_engine::createInstance() {
@@ -272,16 +364,22 @@ void vk_engine::createInstance() {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
 
+	VkApplicationInfo appInfo{};
+	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	appInfo.pNext = nullptr;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
+
 	// instance info
 	VkInstanceCreateInfo createInfo {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	createInfo.pApplicationInfo = &appInfo;
 
 	// get extensions
 	std::vector<const char*> extensions = vk_support::getRequiredExtension(enableValidationLayers);
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
-	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = vk_init::DebugMessengerCreateInfo(debugCallback);
+	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = vk_info::DebugMessengerCreateInfo(debugCallback);
 
 	// enable validation layers
 	if (enableValidationLayers) {
@@ -351,13 +449,13 @@ void vk_engine::createLogicalDevice() {
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
-		VkDeviceQueueCreateInfo queueCreateInfo = vk_init::DeviceQueueCreateInfo(queueFamily, queuePriority);
+		VkDeviceQueueCreateInfo queueCreateInfo = vk_info::DeviceQueueCreateInfo(queueFamily, queuePriority);
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 
-	VkDeviceCreateInfo deviceCreateInfo = vk_init::DeviceCreateInfo(queueCreateInfos, deviceFeatures, deviceExtensions);
+	VkDeviceCreateInfo deviceCreateInfo = vk_info::DeviceCreateInfo(queueCreateInfos, deviceFeatures, deviceExtensions);
 
 	VkPhysicalDeviceShaderDrawParametersFeatures deviceDrawParametersInfo{};
 	deviceDrawParametersInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
@@ -392,7 +490,7 @@ void vk_engine::createSwapChain() {
 		image_count = swapChainSupport.capabilities.maxImageCount;
 	}
 
-	VkSwapchainCreateInfoKHR createInfo = vk_init::SwapChainCreateInfo(_surface, image_count, swapChainSupport, surfaceFormat, presentMode, extent, _indices);
+	VkSwapchainCreateInfoKHR createInfo = vk_info::SwapChainCreateInfo(_surface, image_count, swapChainSupport, surfaceFormat, presentMode, extent, _indices);
 
 	VK_CHECK(vkCreateSwapchainKHR(_device, &createInfo, nullptr, &_swapChain));
 
@@ -408,7 +506,7 @@ void vk_engine::createSwapChain() {
 	_swapChainImageViews.resize(_swapChainImages.size());
 
 	for (size_t i = 0; i < _swapChainImages.size(); i++) {
-		VkImageViewCreateInfo createInfo = vk_init::ImageViewCreateInfo(_swapChainImages[i], _swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		VkImageViewCreateInfo createInfo = vk_info::ImageViewCreateInfo(_swapChainImages[i], _swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		VK_CHECK(vkCreateImageView(_device, &createInfo, nullptr, &_swapChainImageViews[i]));
 		_deletionQueue.push_function([=](){
 			vkDestroyImageView(_device, _swapChainImageViews[i], nullptr);
@@ -425,7 +523,7 @@ void vk_engine::createSwapChain() {
 	_depthFormat = VK_FORMAT_D32_SFLOAT;
 
 	// the depth image will be an image with the format we selected and Depth Attachment usage flag
-	VkImageCreateInfo dimg_info = vk_init::ImageCreateInfo(_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
+	VkImageCreateInfo dimg_info = vk_info::ImageCreateInfo(_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
 
 	// for the depth image, we want to allocate it from GPU local memory
 	VmaAllocationCreateInfo dimg_allocInfo{};
@@ -440,7 +538,7 @@ void vk_engine::createSwapChain() {
 	});
 
 	// build an image-view for the depth image to use for rendering
-	VkImageViewCreateInfo dview_info = vk_init::ImageViewCreateInfo(_depthImage._image, _depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+	VkImageViewCreateInfo dview_info = vk_info::ImageViewCreateInfo(_depthImage._image, _depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
 
@@ -453,7 +551,8 @@ void vk_engine::createDescriptors() {
 	// create a descriptor pool that will hold 10 uniform buffers
 	std::vector<VkDescriptorPoolSize> sizes = {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4 }
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4}
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo{};
@@ -474,12 +573,20 @@ void vk_engine::createDescriptors() {
 	size_t sceneParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData));
 	_sceneParametersBuffer = create_buffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
+	_deletionQueue.push_function([=]() {
+		vmaDestroyBuffer(_allocator, _sceneParametersBuffer._buffer, _sceneParametersBuffer._allocation);
+	});
+
 	size_t cameraParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUCameraData));
 	_cameraParametersBuffer = create_buffer(cameraParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
+	_deletionQueue.push_function([=]() {
+		vmaDestroyBuffer(_allocator, _cameraParametersBuffer._buffer, _cameraParametersBuffer._allocation);
+	});
+
 	// information about the binding
-	VkDescriptorSetLayoutBinding camBind = vk_init::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 0);
-	VkDescriptorSetLayoutBinding sceneBind = vk_init::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+	VkDescriptorSetLayoutBinding camBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 0);
+	VkDescriptorSetLayoutBinding sceneBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 
 	VkDescriptorSetLayoutBinding bindings[] = { camBind, sceneBind };
 
@@ -519,10 +626,10 @@ void vk_engine::createDescriptors() {
 	scenebinfo.offset = 0;
 	scenebinfo.range = sizeof(GPUSceneData);
 
-	VkWriteDescriptorSet camwrite = vk_init::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &cambinfo, 0);
-	VkWriteDescriptorSet scenewrite = vk_init::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &scenebinfo, 1);
+	VkWriteDescriptorSet camwrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &cambinfo, 0);
+	VkWriteDescriptorSet scenewrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &scenebinfo, 1);
 
-	VkDescriptorSetLayoutBinding objBind = vk_init::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
+	VkDescriptorSetLayoutBinding objBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
 	VkDescriptorSetLayoutCreateInfo set2Info{};
 	set2Info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -542,6 +649,10 @@ void vk_engine::createDescriptors() {
 		const int MAX_OBJECTS = 32767;
 		_frames[i]._objectBuffer = create_buffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
+		_deletionQueue.push_function([=]() {
+			vmaDestroyBuffer(_allocator, _frames[i]._objectBuffer._buffer, _frames[i]._objectBuffer._allocation);
+		});
+
 		// allocate one descriptor set for each frame
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -558,11 +669,27 @@ void vk_engine::createDescriptors() {
 		objbinfo.offset = 0;
 		objbinfo.range = sizeof(GPUObjectData) * MAX_OBJECTS;
 
-		VkWriteDescriptorSet objwrite = vk_init::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i]._objectDescriptor, &objbinfo, 0);
+		VkWriteDescriptorSet objwrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i]._objectDescriptor, &objbinfo, 0);
 
 		VkWriteDescriptorSet setwrites[] = { camwrite, scenewrite, objwrite };
 		vkUpdateDescriptorSets(_device, 3, setwrites, 0, nullptr);
 	}
+
+	VkDescriptorSetLayoutBinding texBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+
+	VkDescriptorSetLayoutCreateInfo set3Info{};
+	set3Info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	set3Info.pNext = nullptr;
+
+	set3Info.bindingCount = 1;
+	set3Info.flags = 0;
+	set3Info.pBindings = &texBind;
+
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &set3Info, nullptr, &_textureSetLayout));
+
+	_deletionQueue.push_function([&]() {
+		vkDestroyDescriptorSetLayout(_device, _textureSetLayout, nullptr);
+	});
 }
 
 void vk_engine::createRenderPass() {
@@ -609,7 +736,7 @@ void vk_engine::createRenderPass() {
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
-	VkRenderPassCreateInfo renderPassInfo = vk_init::RenderPassCreateInfo(attachments, subpass, dependency);
+	VkRenderPassCreateInfo renderPassInfo = vk_info::RenderPassCreateInfo(attachments, subpass, dependency);
 
 	VK_CHECK(vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderpass));
 
@@ -619,7 +746,7 @@ void vk_engine::createRenderPass() {
 }
 
 VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
-	VkPipelineColorBlendStateCreateInfo colorBlending = vk_init::ColorBlendStateCreateInfo(_colorBlendAttachment);
+	VkPipelineColorBlendStateCreateInfo colorBlending = vk_info::ColorBlendStateCreateInfo(_colorBlendAttachment);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -666,22 +793,14 @@ void vk_engine::createGraphicsPipeline() {
 	fragShaderStageInfo.pName = "main";
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo = vk_init::PipelineLayoutCreateInfo();
-
-	/* // setup push constants
-	VkPushConstantRange push_const;
-	// this const range start from beg and the size
-	push_const.offset = 0;
-	push_const.size = sizeof(MeshPushConsts);
-	// this const is accessable only by the vertex shader
-	push_const.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; */
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = vk_info::PipelineLayoutCreateInfo();
 
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
 	// hook the global set layout
-	VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout };
-	pipelineLayoutInfo.setLayoutCount = 2;
+	VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout, _textureSetLayout };
+	pipelineLayoutInfo.setLayoutCount = 3;
 	pipelineLayoutInfo.pSetLayouts = setLayouts;
 
 	VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
@@ -691,8 +810,8 @@ void vk_engine::createGraphicsPipeline() {
 	});
 
 	VertexInputDescription description = Vertex::get_vertex_description();
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_init::VertexInputStateCreateInfo(description.bindings, description.attributes);
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly = vk_init::InputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_info::VertexInputStateCreateInfo(description.bindings, description.attributes);
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = vk_info::InputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 	
 	VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -708,10 +827,10 @@ void vk_engine::createGraphicsPipeline() {
 	viewportState.scissorCount = 1;
 	viewportState.pScissors = nullptr;
 
-	VkPipelineRasterizationStateCreateInfo rasterizer = vk_init::RasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-	VkPipelineMultisampleStateCreateInfo multisampling = vk_init::MultisampleStateCreateInfo();
-	VkPipelineColorBlendAttachmentState colorBlendAttachment = vk_init::ColorBlendAttachmentState();
-	VkPipelineDepthStencilStateCreateInfo DepthStencilState = vk_init::PipelineDepthStencilStateCreateInfo(true, true, VK_COMPARE_OP_LESS);
+	VkPipelineRasterizationStateCreateInfo rasterizer = vk_info::RasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+	VkPipelineMultisampleStateCreateInfo multisampling = vk_info::MultisampleStateCreateInfo();
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = vk_info::ColorBlendAttachmentState();
+	VkPipelineDepthStencilStateCreateInfo DepthStencilState = vk_info::PipelineDepthStencilStateCreateInfo(true, true, VK_COMPARE_OP_LESS);
 
 	graphic_pipeline_info._shaderStages = shaderStages;
 	graphic_pipeline_info._vertexInputInfo = vertexInputInfo;
@@ -749,7 +868,7 @@ VkShaderModule vk_engine::createShaderModule(const std::vector<char>& code) {
 
 void vk_engine::createFrameBuffers() {
 	_swapChainFrameBuffers.resize(_swapChainImageViews.size());
-	VkFramebufferCreateInfo framebufferInfo = vk_init::FramebufferCreateInfo(_renderpass, _swapChainExtent);
+	VkFramebufferCreateInfo framebufferInfo = vk_info::FramebufferCreateInfo(_renderpass, _swapChainExtent);
 
 	for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
 		VkImageView attachments[] = {
@@ -787,6 +906,12 @@ void vk_engine::createCommands() {
 
 		VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, &frame._maincommandBuffer));
 	}
+
+	VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_uploadContext._commandPool));
+
+	_deletionQueue.push_function([=]() {
+		vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
+	});
 }
 
 void vk_engine::createSyncObjects() {
@@ -807,6 +932,14 @@ void vk_engine::createSyncObjects() {
 			vkDestroyFence(_device, frame._inFlightFences, nullptr);
 		});
 	}
+
+	fenceInfo.flags = NULL;
+
+	VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_uploadContext._uploadFence));
+
+	_deletionQueue.push_function([=](){
+		vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
+	});
 }
 
 // cleanup memory after terminate the program
@@ -833,10 +966,6 @@ AllocatedBuffer vk_engine::create_buffer(size_t allocSize, VkBufferUsageFlags us
 	AllocatedBuffer newbuffer;
 	VK_CHECK(vmaCreateBuffer(_allocator, &bufferinfo, &vmaallocInfo, &newbuffer._buffer, &newbuffer._allocation, nullptr));
 
-	_deletionQueue.push_function([=]() {
-		vmaDestroyBuffer(_allocator, newbuffer._buffer, newbuffer._allocation);
-	});
-
 	return newbuffer;
 }
 
@@ -849,12 +978,13 @@ size_t vk_engine::pad_uniform_buffer_size(size_t originalSize) {
 	return alignedSize;
 }
 
-Material* vk_engine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name) {
-	Material mat;
-	mat.pipeline = pipeline;
-	mat.pipelineLayout = layout;
-	_materials[name] = mat;
-	return &_materials[name];
+Mesh* vk_engine::get_mesh(const std::string& name) {
+	if (_meshes.find(name) != _meshes.end()) {
+		return &_meshes[name];
+	}
+	else {
+		return nullptr;
+	}
 }
 
 Material* vk_engine::get_material(const std::string& name) {
@@ -866,111 +996,123 @@ Material* vk_engine::get_material(const std::string& name) {
 	}
 }
 
-Mesh* vk_engine::get_mesh(const std::string& name) {
-	if (_meshes.find(name) != _meshes.end()) {
-		return &_meshes[name];
-	}
-	else {
-		return nullptr;
-	}
-}
-
-void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
-	_cameraParameters.projection = _camera->projection;
-	_cameraParameters.view = _camera->view;
-	_cameraParameters.viewproj = _camera->modelViewMatrix();
-
-	int frameIndex = _frameNumber % FRAME_OVERLAP;
-
-	char* camdata;
-	vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
-	camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex;
-	memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
-	vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
-
-	float framed = (_frameNumber / 120.0f);
-	_sceneParameters.ambientColor = { sin(framed), 0, cos(framed), 1 };
-
-	char* sceneData;
-	vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
-	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
-	memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
-	vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
-
-	void* objData;
-	vmaMapMemory(_allocator, frame._objectBuffer._allocation, &objData);
-
-	GPUObjectData* objectSSBO = (GPUObjectData*)objData;
-
-	for (int i = 0; i < count; i++) {
-		RenderObject& object = first[i];
-		objectSSBO[i].modelMatrix = object.transformMatrix;
-	}
-
-	vmaUnmapMemory(_allocator, frame._objectBuffer._allocation);
-
-	Mesh* lastMesh = nullptr;
-	Material* lastMaterial = nullptr;
-
-	for (int i = 0; i < count; i++) {
-		if (lastMaterial != first[i].material) {
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
-			lastMaterial = first[i].material;
-
-			uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex, pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex };
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 0, 1, &_globalDescriptor, 2, uniform_offset);
-
-			//object data descriptor
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 1, 1, &_frames[i]._objectDescriptor, 0, nullptr);
-		}
-
-		if (lastMesh != first[i].mesh) {
-			// bind the mesh vertex buffer with offset 0
-			VkDeviceSize offset = 0;
-			vkCmdBindVertexBuffers(cmd, 0, 1, &first[i].mesh->_vertexBuffer._buffer, &offset);
-			lastMesh = first[i].mesh;
-		}
-
-		vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, i);
-	}
+Material* vk_engine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name) {
+	Material mat;
+	mat.pipeline = pipeline;
+	mat.pipelineLayout = layout;
+	_materials[name] = mat;
+	return &_materials[name];
 }
 
 void vk_engine::load_meshes() {
-	Mesh bus;
-	if (!bus.load_from_obj("assets/gen-bus-2.obj")) {
+	Mesh lostEmpire;
+	if (!lostEmpire.load_from_obj("assets/lost_empire.obj")) {
 		std::cout << "failed to load obj!" << std::endl;
 		abort();
 	}
 
-	_meshes["bus"] = bus;
-	upload_mesh(_meshes["bus"]);
+	_meshes["lostEmpire"] = lostEmpire;
+	upload_mesh(_meshes["lostEmpire"]);
 }
 
 void vk_engine::upload_mesh(Mesh& mesh) {
-	// allocate Vertex Buffer
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	const size_t bufferSize = mesh._vertices.size() * sizeof(Vertex);
+
+	// allocate Staging Buffer
+	VkBufferCreateInfo stagingBufferInfo{};
+	stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	// total size in bytes
-	bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
-	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	stagingBufferInfo.size = bufferSize;
+	stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 	// let vma know this buffer is gonna written by cpu and read by gpu
 	VmaAllocationCreateInfo allocationInfo{};
-	allocationInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	allocationInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
+	AllocatedBuffer stagingBuffer;
 
-	_deletionQueue.push_function([&]() {
-		vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
-		});
+	VK_CHECK(vmaCreateBuffer(_allocator, &stagingBufferInfo, &allocationInfo, &stagingBuffer._buffer, &stagingBuffer._allocation, nullptr));
 
 	// copy vertex data
 	void* data;
-	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+	vmaMapMemory(_allocator, stagingBuffer._allocation, &data);
 
-	memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+	memcpy(data, mesh._vertices.data(), bufferSize);
 
-	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+	vmaUnmapMemory(_allocator, stagingBuffer._allocation);
+
+	// allocate Vertex Buffer
+	VkBufferCreateInfo vertexBufferInfo{};
+	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	// total size in bytes
+	vertexBufferInfo.size = bufferSize;
+	vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+	// let vma know this buffer is gonna written by cpu and read by gpu
+	allocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	VK_CHECK(vmaCreateBuffer(_allocator, &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
+
+	_deletionQueue.push_function([=]() {
+		vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+		});
+
+	immediate_submit([=](VkCommandBuffer cmd) {
+		VkBufferCopy copy;
+		copy.srcOffset = 0;
+		copy.dstOffset = 0;
+		copy.size = bufferSize;
+		vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1, &copy);
+		});
+
+	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+}
+
+void vk_engine::load_textures() {
+	Texture lostEmpire;
+	if (vk_util::load_image_from_file(*this, "assets/lost_empire-RGBA.png", lostEmpire.Image)) {
+		VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(lostEmpire.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+		VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &lostEmpire.imageView));
+
+		_textures["lostEmpire"] = lostEmpire;
+
+		_deletionQueue.push_function([=]() {
+			vkDestroyImageView(_device, lostEmpire.imageView, nullptr);
+		});
+	}
+}
+
+void vk_engine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func) {
+	VkCommandBufferAllocateInfo cmdAllocInfo{};
+	cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	cmdAllocInfo.commandPool = _uploadContext._commandPool;
+	cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	cmdAllocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer cmd{};
+	VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = 0; // optional
+	beginInfo.pInheritanceInfo = nullptr; // optional
+
+	VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+	func(cmd);
+
+	VK_CHECK(vkEndCommandBuffer(cmd));
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmd;
+
+	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _uploadContext._uploadFence));
+	vkWaitForFences(_device, 1, &_uploadContext._uploadFence, VK_TRUE, 1000000000);
+	vkResetFences(_device, 1, &_uploadContext._uploadFence);
+
+	vkResetCommandPool(_device, _uploadContext._commandPool, NULL);
 }
 
 SwapChainSupportDetails vk_engine::querySwapChainSupport(const VkPhysicalDevice& device) {

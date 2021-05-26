@@ -1,5 +1,5 @@
 #pragma once
-#include "vk_types.h"
+#include "vk_type.h"
 
 // Supports / Extensions related
 namespace vk_support {
