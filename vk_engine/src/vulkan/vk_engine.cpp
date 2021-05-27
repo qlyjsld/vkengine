@@ -99,7 +99,7 @@ void vk_engine::drawFrame() {
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _frames[_currentFrame]._imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-	vkResetCommandBuffer(_frames[imageIndex]._maincommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	vkResetCommandBuffer(_frames[_currentFrame]._maincommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
 	// rerecord the command buffer
 	VkCommandBufferBeginInfo beginInfo{};
@@ -113,7 +113,7 @@ void vk_engine::drawFrame() {
 
 	VkClearValue clearValues[] = { clearColor, depthClear };
 
-	VK_CHECK(vkBeginCommandBuffer(_frames[imageIndex]._maincommandBuffer, &beginInfo));
+	VK_CHECK(vkBeginCommandBuffer(_frames[_currentFrame]._maincommandBuffer, &beginInfo));
 
 	// set viewport and scissor dynamically
 	VkViewport viewport{};
@@ -131,8 +131,8 @@ void vk_engine::drawFrame() {
 	VkViewport viewports[] = { viewport };
 	VkRect2D scissors[] = { scissor };
 
-	vkCmdSetViewport(_frames[imageIndex]._maincommandBuffer, 0, 1, viewports);
-	vkCmdSetScissor(_frames[imageIndex]._maincommandBuffer, 0, 1, scissors);
+	vkCmdSetViewport(_frames[_currentFrame]._maincommandBuffer, 0, 1, viewports);
+	vkCmdSetScissor(_frames[_currentFrame]._maincommandBuffer, 0, 1, scissors);
 
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -143,13 +143,13 @@ void vk_engine::drawFrame() {
 	renderPassInfo.clearValueCount = 2;
 	renderPassInfo.pClearValues = &clearValues[0];
 
-	vkCmdBeginRenderPass(_frames[imageIndex]._maincommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(_frames[_currentFrame]._maincommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	draw_objects(_frames[imageIndex]._maincommandBuffer, _renderables.data(), _renderables.size(), _frames[imageIndex]);
+	draw_objects(_frames[_currentFrame]._maincommandBuffer, _renderables.data(), _renderables.size(), _frames[_currentFrame]);
 
-	vkCmdEndRenderPass(_frames[imageIndex]._maincommandBuffer);
+	vkCmdEndRenderPass(_frames[_currentFrame]._maincommandBuffer);
 
-	VK_CHECK(vkEndCommandBuffer(_frames[imageIndex]._maincommandBuffer));
+	VK_CHECK(vkEndCommandBuffer(_frames[_currentFrame]._maincommandBuffer));
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -160,7 +160,7 @@ void vk_engine::drawFrame() {
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &_frames[imageIndex]._maincommandBuffer;
+	submitInfo.pCommandBuffers = &_frames[_currentFrame]._maincommandBuffer;
 
 	VkSemaphore signalSemaphores[] = { _frames[_currentFrame]._renderFinishedSemaphore };
 	submitInfo.signalSemaphoreCount = 1;
