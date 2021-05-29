@@ -14,9 +14,15 @@ namespace vk_info {
 
 	VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent); 
 
+	VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout& layout);
+
+	VkDescriptorImageInfo DescriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout layout);
+
 	VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
 
-	VkWriteDescriptorSet WriteDescriptorSet(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding);
+	VkWriteDescriptorSet WriteDescriptorSetBuffer(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding);
+
+	VkWriteDescriptorSet WriteDescriptorSetImage(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorImageInfo* bufferInfo, uint32_t binding);
 
 	VkRenderPassCreateInfo RenderPassCreateInfo(VkAttachmentDescription* attachments, VkSubpassDescription& subpass, VkSubpassDependency& dependency);
 
@@ -37,4 +43,6 @@ namespace vk_info {
 	VkFramebufferCreateInfo FramebufferCreateInfo(VkRenderPass renderpass, VkExtent2D extent);
 
 	VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilStateCreateInfo (bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
+
+	VkSamplerCreateInfo SamplerCreateInfo(VkFilter filter, VkSamplerAddressMode addrMode);
 }
