@@ -1,5 +1,6 @@
 #pragma once
 #include "vk_type.h"
+// #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
@@ -21,6 +22,7 @@ struct Vertex {
 
 struct Mesh {
 	std::vector<Vertex> _vertices;
+	// glm::mat4 transformMatrix;
 
 	AllocatedBuffer _vertexBuffer;
 	bool load_from_obj(const char* filename);

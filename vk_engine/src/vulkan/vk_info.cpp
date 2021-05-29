@@ -115,6 +115,26 @@ VkImageCreateInfo vk_info::ImageCreateInfo(VkFormat format, VkImageUsageFlags us
 	return info;
 }
 
+VkDescriptorSetAllocateInfo vk_info::DescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout& layout) {
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.pNext = nullptr;
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = pool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &layout;
+
+	return allocInfo;
+}
+
+VkDescriptorImageInfo vk_info::DescriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout layout) {
+	VkDescriptorImageInfo imageBufferInfo{};
+	imageBufferInfo.sampler = sampler;
+	imageBufferInfo.imageView = imageView;
+	imageBufferInfo.imageLayout = layout;
+
+	return imageBufferInfo;
+}
+
 VkDescriptorSetLayoutBinding vk_info::DescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding) {
 	VkDescriptorSetLayoutBinding layoutBinding{};
 	layoutBinding.binding = binding;
@@ -125,7 +145,7 @@ VkDescriptorSetLayoutBinding vk_info::DescriptorSetLayoutBinding(VkDescriptorTyp
 	return layoutBinding;
 }
 
-VkWriteDescriptorSet vk_info::WriteDescriptorSet(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding) {
+VkWriteDescriptorSet vk_info::WriteDescriptorSetBuffer(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding) {
 	VkWriteDescriptorSet setwrite{};
 	setwrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	setwrite.pNext = nullptr;
@@ -135,6 +155,20 @@ VkWriteDescriptorSet vk_info::WriteDescriptorSet(VkDescriptorType descriptorType
 	setwrite.descriptorCount = 1;
 	setwrite.descriptorType = descriptorType;
 	setwrite.pBufferInfo = bufferInfo;
+
+	return setwrite;
+}
+
+VkWriteDescriptorSet vk_info::WriteDescriptorSetImage(VkDescriptorType descriptorType, VkDescriptorSet dstSet, VkDescriptorImageInfo* bufferInfo, uint32_t binding) {
+	VkWriteDescriptorSet setwrite{};
+	setwrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	setwrite.pNext = nullptr;
+
+	setwrite.dstBinding = binding;
+	setwrite.dstSet = dstSet;
+	setwrite.descriptorCount = 1;
+	setwrite.descriptorType = descriptorType;
+	setwrite.pImageInfo = bufferInfo;
 
 	return setwrite;
 }
@@ -268,4 +302,17 @@ VkPipelineDepthStencilStateCreateInfo vk_info::PipelineDepthStencilStateCreateIn
 	createInfo.stencilTestEnable = VK_FALSE;
 
 	return createInfo;
+}
+
+VkSamplerCreateInfo vk_info::SamplerCreateInfo(VkFilter filter, VkSamplerAddressMode addrMode) {
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.pNext = nullptr;
+	samplerInfo.magFilter = filter;
+	samplerInfo.minFilter = filter;
+	samplerInfo.addressModeU = addrMode;
+	samplerInfo.addressModeV = addrMode;
+	samplerInfo.addressModeW = addrMode;
+
+	return samplerInfo;
 }

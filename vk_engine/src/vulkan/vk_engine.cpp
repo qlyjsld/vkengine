@@ -5,6 +5,7 @@
 #include <fstream>
 #include <set>
 #include <chrono>
+#include <future>
 
 #define VMA_IMPLEMENTATION
 #include "vk_engine.h"
@@ -65,6 +66,29 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 void vk_engine::mainloop() {
 	while (!glfwWindowShouldClose(_window)) {
 		glfwPollEvents();
+
+		// handle user's input
+		float programTime = glfwGetTime();
+		float frametime = (programTime - _lastFrame) * 5.0f;
+		_lastFrame = programTime;
+
+		double mouse_xpos;
+		double mouse_ypos;
+
+		glfwGetCursorPos(_window, &mouse_xpos, &mouse_ypos);
+		_camera->updateCameraFront(mouse_xpos, mouse_ypos);
+
+		_camera->updateCameraPos('m', frametime);
+
+		if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS)
+			_camera->updateCameraPos('w', frametime);
+		if (glfwGetKey(_window, GLFW_KEY_A) == GLFW_PRESS)
+			_camera->updateCameraPos('a', frametime);
+		if (glfwGetKey(_window, GLFW_KEY_S) == GLFW_PRESS)
+			_camera->updateCameraPos('s', frametime);
+		if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS)
+			_camera->updateCameraPos('d', frametime);
+
 		drawFrame();
 	}
 	vkDeviceWaitIdle(_device);
@@ -72,28 +96,6 @@ void vk_engine::mainloop() {
 
 void vk_engine::drawFrame() {
 	// auto start = std::chrono::steady_clock::now();
-	// handle user's input
-	float programTime = glfwGetTime();
-	float frametime = (programTime - _lastFrame) * 5.0f;
-	_lastFrame = programTime;
-
-	double mouse_xpos;
-	double mouse_ypos;
-
-	glfwGetCursorPos(_window, &mouse_xpos, &mouse_ypos);
-	_camera->updateCameraFront(mouse_xpos, mouse_ypos);
-
-	_camera->updateCameraPos('m', frametime);
-
-	if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS)
-		_camera->updateCameraPos('w', frametime);
-	if (glfwGetKey(_window, GLFW_KEY_A) == GLFW_PRESS)
-		_camera->updateCameraPos('a', frametime);
-	if (glfwGetKey(_window, GLFW_KEY_S) == GLFW_PRESS)
-		_camera->updateCameraPos('s', frametime);
-	if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS)
-		_camera->updateCameraPos('d', frametime);
-
 	vkWaitForFences(_device, 1, &_frames[_currentFrame]._inFlightFences, VK_TRUE, UINT64_MAX);
 	vkResetFences(_device, 1, &_frames[_currentFrame]._inFlightFences);
 
@@ -190,43 +192,45 @@ void vk_engine::drawFrame() {
 }
 
 void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
-	_cameraParameters.projection = _camera->projection;
-	_cameraParameters.view = _camera->view;
-	_cameraParameters.viewproj = _camera->modelViewMatrix();
-
 	int frameIndex = _frameNumber % FRAME_OVERLAP;
 
-	char* camdata;
-	vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
-	camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex;
-	memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
-	vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
+	std::async(std::launch::async, [&]() {
+		_cameraParameters.projection = _camera->projection;
+		_cameraParameters.view = _camera->view;
+		_cameraParameters.viewproj = _camera->modelViewMatrix();
 
-	float framed = (_frameNumber / 120.0f);
-	_sceneParameters.ambientColor = { 0.2f, 0.5f, 0.2f, 1.0f };
+		char* camdata;
+		vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
+		camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex;
+		memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
+		vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
 
-	char* sceneData;
-	vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
-	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
-	memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
-	vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
+		char* sceneData;
+		vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
+		sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
+		memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
+		vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
+	});
 
-	void* objData;
-	vmaMapMemory(_allocator, frame._objectBuffer._allocation, &objData);
+	std::async(std::launch::async, [&]() {
+		void* objData;
+		vmaMapMemory(_allocator, frame._objectBuffer._allocation, &objData);
 
-	GPUObjectData* objectSSBO = (GPUObjectData*)objData;
+		GPUObjectData* objectSSBO = (GPUObjectData*)objData;
 
-	for (int i = 0; i < count; i++) {
-		RenderObject& object = first[i];
-		objectSSBO[i].modelMatrix = object.transformMatrix;
-	}
+		for (int i = 0; i < count; i++) {
+			RenderObject& object = first[i];
+			objectSSBO[i].modelMatrix = object.transformMatrix;
+		}
 
-	vmaUnmapMemory(_allocator, frame._objectBuffer._allocation);
+		vmaUnmapMemory(_allocator, frame._objectBuffer._allocation);
+	});
 
 	Mesh* lastMesh = nullptr;
 	Material* lastMaterial = nullptr;
 
 	for (int i = 0; i < count; i++) {
+		std::cout << lastMaterial << first[i].material << std::endl;
 		if (lastMaterial != first[i].material) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
 			lastMaterial = first[i].material;
@@ -238,7 +242,9 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 1, 1, &_frames[i]._objectDescriptor, 0, nullptr);
 
 			//object data descriptor
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 2, 1, &first[i].material->textureSet, 0, nullptr);
+			if (first[i].material->textureSet != VK_NULL_HANDLE) {
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 2, 1, &first[i].material->textureSet, 0, nullptr);
+			}
 		}
 
 		if (lastMesh != first[i].mesh) {
@@ -247,8 +253,7 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 			vkCmdBindVertexBuffers(cmd, 0, 1, &first[i].mesh->_vertexBuffer._buffer, &offset);
 			lastMesh = first[i].mesh;
 		}
-
-		vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, i);
+		vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, 0);
 	}
 }
 
@@ -315,14 +320,7 @@ void vk_engine::init_scene() {
 
 	_renderables.push_back(lostEmpire);
 
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.pNext = nullptr;
-	samplerInfo.magFilter = VK_FILTER_NEAREST;
-	samplerInfo.minFilter = VK_FILTER_NEAREST;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	VkSamplerCreateInfo samplerInfo = vk_info::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	VkSampler blockySampler{};
 	vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
@@ -331,29 +329,11 @@ void vk_engine::init_scene() {
 		vkDestroySampler(_device, blockySampler, nullptr);
 	});
 
-	VkDescriptorSetAllocateInfo allocInfo{};
-	allocInfo.pNext = nullptr;
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = _descriptorPool;
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &_textureSetLayout;
-
+	VkDescriptorSetAllocateInfo allocInfo = vk_info::DescriptorSetAllocateInfo(_descriptorPool, _textureSetLayout);
 	vkAllocateDescriptorSets(_device, &allocInfo, &lostEmpire.material->textureSet);
 
-	VkDescriptorImageInfo imageBufferInfo{};
-	imageBufferInfo.sampler = blockySampler;
-	imageBufferInfo.imageView = _textures["lostEmpire"].imageView;
-	imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkWriteDescriptorSet texture1{};
-	texture1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	texture1.pNext = nullptr;
-
-	texture1.dstBinding = 0;
-	texture1.dstSet = lostEmpire.material->textureSet;
-	texture1.descriptorCount = 1;
-	texture1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	texture1.pImageInfo = &imageBufferInfo;
+	VkDescriptorImageInfo imageBufferInfo = vk_info::DescriptorImageInfo(blockySampler, _textures["lostEmpire"].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	VkWriteDescriptorSet texture1 = vk_info::WriteDescriptorSetImage(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, lostEmpire.material->textureSet, &imageBufferInfo, 0);
 
 	vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
 }
@@ -626,8 +606,8 @@ void vk_engine::createDescriptors() {
 	scenebinfo.offset = 0;
 	scenebinfo.range = sizeof(GPUSceneData);
 
-	VkWriteDescriptorSet camwrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &cambinfo, 0);
-	VkWriteDescriptorSet scenewrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &scenebinfo, 1);
+	VkWriteDescriptorSet camwrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &cambinfo, 0);
+	VkWriteDescriptorSet scenewrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &scenebinfo, 1);
 
 	VkDescriptorSetLayoutBinding objBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
@@ -669,7 +649,7 @@ void vk_engine::createDescriptors() {
 		objbinfo.offset = 0;
 		objbinfo.range = sizeof(GPUObjectData) * MAX_OBJECTS;
 
-		VkWriteDescriptorSet objwrite = vk_info::WriteDescriptorSet(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i]._objectDescriptor, &objbinfo, 0);
+		VkWriteDescriptorSet objwrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i]._objectDescriptor, &objbinfo, 0);
 
 		VkWriteDescriptorSet setwrites[] = { camwrite, scenewrite, objwrite };
 		vkUpdateDescriptorSets(_device, 3, setwrites, 0, nullptr);
