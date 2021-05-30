@@ -13,7 +13,8 @@
 #include "vk_texture.h"
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "Camera.h"
+#include "camera.h"
+#include "logger.h"
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -77,8 +78,6 @@ void vk_engine::mainloop() {
 
 		glfwGetCursorPos(_window, &mouse_xpos, &mouse_ypos);
 		_camera->updateCameraFront(mouse_xpos, mouse_ypos);
-
-		_camera->updateCameraPos('m', frametime);
 
 		if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS)
 			_camera->updateCameraPos('w', frametime);
@@ -195,9 +194,9 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 	int frameIndex = _frameNumber % FRAME_OVERLAP;
 
 	std::async(std::launch::async, [&]() {
-		_cameraParameters.projection = _camera->projection;
-		_cameraParameters.view = _camera->view;
-		_cameraParameters.viewproj = _camera->modelViewMatrix();
+		_cameraParameters.view = _camera->getViewMatrix();
+		_cameraParameters.projection = _camera->getProjectionMatrix(WIDTH, HEIGHT);
+		_cameraParameters.viewproj = _cameraParameters.projection * _cameraParameters.view;
 
 		char* camdata;
 		vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
@@ -230,7 +229,6 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 	Material* lastMaterial = nullptr;
 
 	for (int i = 0; i < count; i++) {
-		std::cout << lastMaterial << first[i].material << std::endl;
 		if (lastMaterial != first[i].material) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
 			lastMaterial = first[i].material;
@@ -260,9 +258,13 @@ void vk_engine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count
 // run the engine
 void vk_engine::run() {
 	init_window();
+	SPDLOG_INFO("GLFW window initialized successfully");
 	init_input();
 	init_vulkan();
+	SPDLOG_INFO("Vulkan instance initialized successfully");
 	init_scene();
+	SPDLOG_INFO("Scene loaded successfully");
+	SPDLOG_INFO("Start rendering");
 	mainloop();
 	cleanup();
 }
@@ -280,7 +282,7 @@ void vk_engine::init_window() {
 
 void vk_engine::init_input() {
 	glfwSetKeyCallback(_window, key_callback);
-	_camera = new Camera{ WIDTH, HEIGHT };
+	_camera = new Camera;
 	glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
@@ -412,7 +414,7 @@ void vk_engine::createLogicalDevice() {
 		vkGetPhysicalDeviceProperties(device, &_deviceProperties);
 		if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 			_physicalDevice = device;
-			std::cout << "The GPU has a minimum buffer alignment of " << _deviceProperties.limits.minUniformBufferOffsetAlignment << std::endl;
+			SPDLOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
 			break;
 		}
 	}
