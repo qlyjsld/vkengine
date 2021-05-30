@@ -1,4 +1,5 @@
 # CMakeLists.txt
+include(ExternalProject)
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name
@@ -34,6 +35,20 @@ target_link_libraries(vk_engine glfw)
 set(glm_DIR "vendors/glm/cmake/glm")
 find_package(glm REQUIRED FATAL_ERROR)
 
+# spdlog
+ExternalProject_Add(spdlog
+    PREFIX spdlog
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/vendors/spdlog
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+    -DCMAKE_INSTALL_PREFIX=${STAGING_DIR}
+    -DSPDLOG_BUILD_SHARED=OFF
+)
+
+add_dependencies(vk_engine spdlog)
+
 # Define the include DIRs
 include_directories(
 	"vk_engine/src/vulkan"
@@ -42,6 +57,7 @@ include_directories(
 	"vendors/glm"
 	"vendors/vma"
 	"vendors/stb_image"
+	"vendors/spdlog/include"
 	"vendors/tinyobjloader"
 	${Vulkan_INCLUDE_DIRS}
 )

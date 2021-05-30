@@ -2,11 +2,11 @@
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 
-const float camera_speed = 5.0f;
+constexpr float camera_speed = 5.0f;
 
 void Camera::updateCameraFront(double mouse_xpos, double mouse_ypos) {
-	float xoffset = (mouse_xpos - last_mouse_xpos) * 0.1f;
-	float yoffset = (last_mouse_ypos - mouse_ypos) * 0.1f;
+	float xoffset = (mouse_xpos - lastMouseXpos) * 0.1f;
+	float yoffset = (lastMouseYpos - mouse_ypos) * 0.1f;
 
 	yaw += xoffset;
 	pitch += yoffset;
@@ -17,8 +17,8 @@ void Camera::updateCameraFront(double mouse_xpos, double mouse_ypos) {
 
 	camFront = glm::normalize(camFront);
 
-	last_mouse_xpos = mouse_xpos;
-	last_mouse_ypos = mouse_ypos;
+	lastMouseXpos = mouse_xpos;
+	lastMouseYpos = mouse_ypos;
 }
 
 void  Camera::updateCameraPos(char&& key, float frametime) {
@@ -38,10 +38,14 @@ void  Camera::updateCameraPos(char&& key, float frametime) {
 	default:
 		break;
 	}
-	view = glm::lookAt(camPos, camPos + camFront, camUp);
-	lastFrame = currentFrame;
 }
 
-glm::mat4 Camera::modelViewMatrix() {
-	return projection * view;
+glm::mat4 Camera::getViewMatrix() {
+	return glm::lookAt(camPos, camPos + camFront, camUp);
+}
+
+glm::mat4 Camera::getProjectionMatrix(float width, float height) {
+	auto projection = glm::perspective(glm::radians(70.0f), width / height, 0.1f, 200.0f);
+	projection[1][1] *= -1;
+	return projection;
 }
