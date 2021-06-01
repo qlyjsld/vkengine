@@ -13,8 +13,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 file(GLOB SOURCE_FILES
 	"vk_engine/src/*.h"
 	"vk_engine/src/*.cpp"
-	"vk_engine/src/vulkan/*.h"
-	"vk_engine/src/vulkan/*.cpp")
+	"vk_engine/src/vk_engine/renderer/*.h"
+	"vk_engine/src/vk_engine/renderer/*.cpp"
+	"vk_engine/src/vk_engine/core/*.h"
+	"vk_engine/src/vk_engine/core/*.cpp")
 
 # add the executable
 add_executable(vk_engine ${SOURCE_FILES})
@@ -51,7 +53,6 @@ add_dependencies(vk_engine spdlog)
 
 # Define the include DIRs
 include_directories(
-	"vk_engine/src/vulkan"
 	"vk_engine/src"
 	"vendors/glfw-3.3.2/include"
 	"vendors/glm"

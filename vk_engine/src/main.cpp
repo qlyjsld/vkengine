@@ -4,7 +4,7 @@
 #include "vk_engine.h"
 
 int main(){
-	vk_engine engine{};
+	vk_engine::vk_renderer engine{};
 
 	try {
 		engine.run();
