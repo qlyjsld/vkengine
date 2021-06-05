@@ -3,6 +3,7 @@
 #include "vk_engine/renderer/vk_mesh.h"
 #include <deque>
 #include <functional>
+#include <string>
 #include <glm/glm.hpp>
 
 constexpr unsigned int FRAME_OVERLAP = 2;
