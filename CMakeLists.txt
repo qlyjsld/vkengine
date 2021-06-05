@@ -16,7 +16,9 @@ file(GLOB SOURCE_FILES
 	"vk_engine/src/vk_engine/renderer/*.h"
 	"vk_engine/src/vk_engine/renderer/*.cpp"
 	"vk_engine/src/vk_engine/core/*.h"
-	"vk_engine/src/vk_engine/core/*.cpp")
+	"vk_engine/src/vk_engine/core/*.cpp"
+	"vk_engine/src/vk_engine/assets/*.cpp"
+	"vk_engine/src/vk_engine/assets/*.h")
 
 # add the executable
 add_executable(vk_engine ${SOURCE_FILES})
@@ -60,6 +62,8 @@ include_directories(
 	"vendors/stb_image"
 	"vendors/spdlog/include"
 	"vendors/tinyobjloader"
+	"vendors/lz4-1.9.3/lib"
+	"vendors/json"
 	${Vulkan_INCLUDE_DIRS}
 )
 
