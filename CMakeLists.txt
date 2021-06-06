@@ -11,17 +11,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Add source files
 file(GLOB SOURCE_FILES
-	"vk_engine/src/*.h"
-	"vk_engine/src/*.cpp"
+	"vk_engine/src/main.cpp"
+	"vk_engine/src/vk_engine.h"
 	"vk_engine/src/vk_engine/renderer/*.h"
 	"vk_engine/src/vk_engine/renderer/*.cpp"
 	"vk_engine/src/vk_engine/core/*.h"
 	"vk_engine/src/vk_engine/core/*.cpp"
 	"vk_engine/src/vk_engine/assets/*.cpp"
-	"vk_engine/src/vk_engine/assets/*.h")
+	"vk_engine/src/vk_engine/assets/*.h"
+	"vendors/lz4-1.9.3/lib/lz4.c")
 
 # add the executable
 add_executable(vk_engine ${SOURCE_FILES})
+
+# Add source files
+file(GLOB SOURCE_FILES
+	"vk_engine/src/vk_asset.cpp"
+	"vk_engine/src/vk_engine/assets/*.cpp"
+	"vk_engine/src/vk_engine/assets/*.h"
+	"vendors/lz4-1.9.3/lib/lz4.c")
+
+# add the executable
+add_executable(vk_asset ${SOURCE_FILES})
 
 # Vulkan
 find_package(Vulkan REQUIRED FATAL_ERROR)
