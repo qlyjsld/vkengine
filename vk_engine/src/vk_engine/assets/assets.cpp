@@ -100,17 +100,42 @@ namespace vk_engine {
             return file;
         }
 
-        /* meshInfo readMeshInfo(assetFile* file) {
-        
+        meshInfo readMeshInfo(assetFile* file) {
+            meshInfo info;
+
+            json meshJson = json::parse(file->json);
+
+            info.shapeSize = meshJson["shapeSize"];
+            info.meshSize = meshJson["meshSize"];
+
+            return info;
         }
 
         void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest) {
 
         }
 
-        assetFile packMesh(meshInfo* info, void* pixelData) {
+        assetFile packMesh(meshInfo* info, void* meshData) {
+            assetFile file;
+            file.type[0] = 'M';
+            file.type[1] = 'E';
+            file.type[2] = 'S';
+            file.type[3] = 'H';
+            file.version = 0;
 
-        } */
+            json meshJson;
+            meshJson["shapeSize"] = info->shapeSize;
+            meshJson["meshSize"] = info->meshSize;
+            file.json = meshJson.dump();
+
+            // compress buffer into blob
+            int compressStaging = LZ4_compressBound(info->meshSize);
+            file.binaryBlob.resize(compressStaging);
+            int compressedSize = LZ4_compress_default((const char*) meshData, file.binaryBlob.data(), info->meshSize, compressStaging);
+            file.binaryBlob.resize(compressedSize);
+
+            return file;
+        }
     }
 
 }

@@ -6,6 +6,7 @@
 #include <set>
 #include <chrono>
 #include <future>
+#include <filesystem>
 
 #define VMA_IMPLEMENTATION
 #include "vk_engine/renderer/vk_renderer.h"
@@ -40,6 +41,9 @@ namespace vk_engine {
 	constexpr unsigned int MAX_FRAMES_IN_FLIGHT = 2;
 
 	constexpr VkClearValue clearColor = { 0.25f, 0.25f, 0.25f, 1.0f };
+
+	std::shared_ptr<spdlog::logger> logger::_corelogger;
+	std::shared_ptr<spdlog::logger> logger::_clientlogger;
 
 	static std::vector<char> readfile(const std::string & filename) {
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -259,14 +263,15 @@ namespace vk_engine {
 
 	// run the engine
 	void vk_renderer::run() {
+		logger::init();
 		init_window();
-		SPDLOG_INFO("GLFW window initialized successfully");
+		VK_LOG_INFO("GLFW window initialized successfully");
 		init_input();
 		init_vulkan();
-		SPDLOG_INFO("Vulkan instance initialized successfully");
+		VK_LOG_INFO("Vulkan instance initialized successfully");
 		init_scene();
-		SPDLOG_INFO("Scene loaded successfully");
-		SPDLOG_INFO("Start rendering");
+		VK_LOG_INFO("Scene loaded successfully");
+		VK_LOG_INFO("Start rendering");
 		mainloop();
 		cleanup();
 	}
@@ -314,16 +319,16 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::init_scene() {
+		VK_LOG_INFO("Loading meshes...");
 		load_meshes();
-		SPDLOG_INFO("loading textures");
+		VK_LOG_INFO("Loading textures...");
 		load_textures();
 
-		RenderObject lostEmpire;
-		lostEmpire.mesh = get_mesh("lostEmpire");
-		lostEmpire.material = get_material("defaultmesh");
-		lostEmpire.transformMatrix = glm::mat4{ 1.0f };
+		RenderObject San_Miguel;
+		San_Miguel.material = get_material("defaultmesh");
+		San_Miguel.transformMatrix = glm::mat4{ 1.0f };
 
-		_renderables.push_back(lostEmpire);
+		_renderables.push_back(San_Miguel);
 
 		VkSamplerCreateInfo samplerInfo = vk_info::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
@@ -335,10 +340,10 @@ namespace vk_engine {
 		});
 
 		VkDescriptorSetAllocateInfo allocInfo = vk_info::DescriptorSetAllocateInfo(_descriptorPool, _textureSetLayout);
-		vkAllocateDescriptorSets(_device, &allocInfo, &lostEmpire.material->textureSet);
+		vkAllocateDescriptorSets(_device, &allocInfo, &San_Miguel.material->textureSet);
 
-		VkDescriptorImageInfo imageBufferInfo = vk_info::DescriptorImageInfo(blockySampler, _textures["lostEmpire"].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		VkWriteDescriptorSet texture1 = vk_info::WriteDescriptorSetImage(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, lostEmpire.material->textureSet, &imageBufferInfo, 0);
+		VkDescriptorImageInfo imageBufferInfo = vk_info::DescriptorImageInfo(blockySampler, _textures["San_Miguel"].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		VkWriteDescriptorSet texture1 = vk_info::WriteDescriptorSetImage(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, San_Miguel.material->textureSet, &imageBufferInfo, 0);
 
 		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
 	}
@@ -417,7 +422,7 @@ namespace vk_engine {
 			vkGetPhysicalDeviceProperties(device, &_deviceProperties);
 			if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
 				_physicalDevice = device;
-				SPDLOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
+				VK_LOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
 				break;
 			}
 		}
@@ -963,14 +968,14 @@ namespace vk_engine {
 		return alignedSize;
 	}
 
-	Mesh* vk_renderer::get_mesh(const std::string& name) {
+	/* Mesh* vk_renderer::get_mesh(const std::string& name) {
 		if (_meshes.find(name) != _meshes.end()) {
 			return &_meshes[name];
 		}
 		else {
 			return nullptr;
 		}
-	}
+	} */
 
 	Material* vk_renderer::get_material(const std::string& name) {
 		if (_materials.find(name) != _materials.end()) {
@@ -990,14 +995,18 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::load_meshes() {
-		Mesh lostEmpire;
-		if (!lostEmpire.load_from_obj("assets/lost_empire.obj")) {
+		std::unordered_map<std::string, Mesh> _meshes = Mesh::load_from_obj("assets/San_Miguel/san-miguel.asset");
+		if (!_meshes.size()) {
 			std::cout << "failed to load obj!" << std::endl;
 			abort();
 		}
 
-		_meshes["lostEmpire"] = lostEmpire;
-		upload_mesh(_meshes["lostEmpire"]);
+		for (auto& mesh : _meshes) {
+			auto task = std::async(std::launch::async, [&]() {
+				upload_mesh(mesh.second);
+			});
+		}
+		_meshes.clear();
 	}
 
 	void vk_renderer::upload_mesh(Mesh& mesh) {
@@ -1054,17 +1063,22 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::load_textures() {
-		Texture lostEmpire;
-		if (vk_util::load_image_from_file(*this, "assets/lost_empire-RGBA.asset", lostEmpire.Image)) {
-			VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(lostEmpire.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-			VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &lostEmpire.imageView));
+		std::cin.get();
+		for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("assets/San_Miguel/textures")) {
+			auto task = std::async(std::launch::async, [&]() {
+				Texture texture;
+				if (vk_util::load_image_from_file(*this, dirEntry.path().string().c_str(), texture.Image)) {
+					VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(texture.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+					VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView));
 
-			_textures["lostEmpire"] = lostEmpire;
+					_textures[dirEntry.path().string()] = texture;
 
-			_deletionQueue.push_function([=]() {
-				vkDestroyImageView(_device, lostEmpire.imageView, nullptr);
+					_deletionQueue.push_function([=]() {
+						vkDestroyImageView(_device, texture.imageView, nullptr);
+						});
+				}
 			});
-		}
+		};
 	}
 
 	void vk_renderer::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func) {

@@ -1,7 +1,5 @@
 #include "vk_engine/renderer/vk_mesh.h"
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
+#include "vk_engine/assets/assets.h"
 
 #include <iostream>
 #include <future>
@@ -58,7 +56,9 @@ namespace vk_engine {
 
 	std::mutex vector_mutex;
 
-	void load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape, std::vector<Vertex>& vertices) {
+	Mesh load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape) {
+		Mesh mesh;
+
 		size_t index_offset = 0;
 		// loop over faces
 		for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
@@ -93,40 +93,30 @@ namespace vk_engine {
 				vertex.uv.y = 1 - uy;
 
 				std::lock_guard<std::mutex> lock(vector_mutex);
-				vertices.push_back(std::move(vertex));
+				mesh._vertices.push_back(std::move(vertex));
 			}
 			index_offset += fv;
 		}
+
+		return mesh;
 	}
 
-	bool Mesh::load_from_obj(const char* filename) {
-		// attrib will contain the vertex arrays of the file
-		tinyobj::attrib_t attrib;
-		// shapes contain the vertices of each separate object in the file
-		std::vector<tinyobj::shape_t> shapes;
-		// materials contain the material of each separate object in the file
-		std::vector<tinyobj::material_t> materials;
+	std::unordered_map<std::string, Mesh> Mesh::load_from_obj(const char* filename) {
+		std::unordered_map<std::string, Mesh> meshes;
 
-		// err stands for error
-		std::string err;
-		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename);
+		assets::assetFile file;
+		assets::loadAssetFile(filename, file);
 
-		if (!err.empty()) {
-			std::cerr << err << std::endl;
-		}
-
-		if (!ret) {
-			return false;
-		}
+		assets::meshInfo info = assets::readMeshInfo(&file);
 
 		// Loop over shapes
-		for (size_t s = 0; s < shapes.size(); s++) {
-			auto task = std::async(std::launch::async, load_shape, attrib, shapes[s], std::ref(_vertices));
+		for (size_t s = 0; s < info.shapeSize; s++) {
+			meshs.push_back();
 		}
 
 		std::cout << "finished loading: " << filename << std::endl;
 
-		return true;
+		return meshes;
 	}
 
 }

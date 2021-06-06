@@ -118,7 +118,7 @@ namespace vk_engine {
 		* _textures store textures of meshes
 		*/
 		std::unordered_map<std::string, Material> _materials;
-		std::unordered_map<std::string, Mesh> _meshes;
+		// std::unordered_map<std::string, Mesh> _meshes;
 		std::unordered_map<std::string, Texture> _textures;
 
 		void load_meshes(); // load meshes data into _meshes
@@ -126,7 +126,7 @@ namespace vk_engine {
 		void load_textures(); // load textures into _textures
 
 		// load / store from the unordered maps
-		Mesh* get_mesh(const std::string& name);
+		// Mesh* get_mesh(const std::string& name);
 		Material* get_material(const std::string& name);
 		Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
 

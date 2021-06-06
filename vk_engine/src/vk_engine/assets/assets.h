@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "glm/vec3.hpp"
+#include "glm/vec2.hpp"
 
 namespace vk_engine {
 
@@ -35,13 +37,25 @@ namespace vk_engine {
         assetFile packTexture(textureInfo* info, void* pixelData);
 
         // mesh
-        struct meshInfo {
-
+        struct Vertex {
+            glm::vec3 position;
+            glm::vec3 normal;
+            glm::vec3 color;
+            glm::vec2 uv;
         };
 
-        /* meshInfo readMeshInfo(assetFile* file);
+        struct Mesh {
+            std::vector<Vertex> _vertices;
+        };
+
+        struct meshInfo {
+            uint32_t shapeSize;
+            uint64_t meshSize;
+        };
+
+        meshInfo readMeshInfo(assetFile* file);
         void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
-        assetFile packMesh(meshInfo* info, void* pixelData); */
+        assetFile packMesh(meshInfo* info, void* meshData);
 
     }
 

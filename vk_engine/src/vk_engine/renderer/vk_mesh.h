@@ -1,8 +1,11 @@
 #pragma once
 #include "vk_engine/renderer/vk_type.h"
-// #include <glm/mat4x4.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
+// #include "glm/mat4x4.hpp"
+#include "glm/vec3.hpp"
+#include "glm/vec2.hpp"
+
+#include <string>
+#include <unordered_map>
 
 namespace vk_engine {
 
@@ -27,7 +30,7 @@ namespace vk_engine {
 		// glm::mat4 transformMatrix;
 
 		AllocatedBuffer _vertexBuffer;
-		bool load_from_obj(const char* filename);
+		static std::unordered_map<std::string, Mesh> load_from_obj(const char* filename);
 	};
 
 }
