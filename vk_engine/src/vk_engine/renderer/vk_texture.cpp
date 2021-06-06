@@ -1,5 +1,6 @@
 #include "vk_engine/renderer/vk_texture.h"
 #include "vk_engine/renderer/vk_info.h"
+#include "vk_engine/assets/assets.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -7,33 +8,26 @@
 namespace vk_engine {
 
 	bool vk_util::load_image_from_file(vk_renderer& engine, const char* file, AllocatedImage& outImage) {
-		int texWidth, texHeight, texChannels;
+		assets::assetFile asset{};
+		assets::loadAssetFile(file, asset);
 
-		stbi_uc* pixels = stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		assets::textureInfo textInfo = assets::readTextureInfo(&asset);
 
-		if (!pixels) {
-			return false;
-		}
+		VkFormat image_format = (VkFormat) textInfo.format;
 
-		void* pixel_ptr = pixels;
-		VkDeviceSize imageSize = texWidth * texHeight * 4;
-		VkFormat image_format = VK_FORMAT_R8G8B8A8_SRGB;
-
-		AllocatedBuffer stageingBuffer = engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+		AllocatedBuffer stageingBuffer = engine.create_buffer(textInfo.textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
 		// copy texture data
 		void* data;
 		vmaMapMemory(engine._allocator, stageingBuffer._allocation, &data);
 
-		memcpy(data, pixel_ptr, static_cast<size_t>(imageSize));
+		assets::unpackTexture(&textInfo, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
 
 		vmaUnmapMemory(engine._allocator, stageingBuffer._allocation);
 
-		stbi_image_free(pixels);
-
 		VkExtent3D imageExtent;
-		imageExtent.width = static_cast<uint32_t>(texWidth);
-		imageExtent.height = static_cast<uint32_t>(texHeight);
+		imageExtent.width = textInfo.width;
+		imageExtent.height = textInfo.height;
 		imageExtent.depth = 1;
 
 		VkImageCreateInfo imgInfo = vk_info::ImageCreateInfo(image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
