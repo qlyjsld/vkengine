@@ -6,28 +6,42 @@ namespace vk_engine {
 
     namespace assets {
 
-        struct assestFile {
+        struct assetFile {
             char type[4]; // TEXT for texture, MESH for mesh
             uint32_t version;
             std::string json;
             std::vector<char> binaryBlob;
         };
 
-        bool saveBinaryFile(const char* path, const assestFile& file);
-        bool loadBinaryFile(const char* path, assestFile& file);
+        bool saveAssetFile(const char* path, const assetFile& file);
+        bool loadAssetFile(const char* path, assetFile& file);
 
         // texture
-        struct textureInfo {
-            uint32_t textureSize;
-            uint32_t pixelSize[3];
-            std::string pixels;
-        }
+        enum class textureFormat : uint32_t {
+            UNDEFINED = 0,
+            RGBA8 = 43
+        };
 
-        textureInfo readTextureInfo(assestFile* file);
+        struct textureInfo {
+            uint64_t textureSize;
+            textureFormat format;
+            uint32_t width;
+            uint32_t height;
+        };
+
+        // textureFormat parseFormat(const char* c);
+        textureInfo readTextureInfo(assetFile* file);
         void unpackTexture(textureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
-        assestFile packTexture(textureInfo* info, void* pixelData);
+        assetFile packTexture(textureInfo* info, void* pixelData);
 
         // mesh
+        struct meshInfo {
+
+        };
+
+        /* meshInfo readMeshInfo(assetFile* file);
+        void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
+        assetFile packMesh(meshInfo* info, void* pixelData); */
 
     }
 

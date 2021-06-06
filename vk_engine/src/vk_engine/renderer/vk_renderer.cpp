@@ -315,6 +315,7 @@ namespace vk_engine {
 
 	void vk_renderer::init_scene() {
 		load_meshes();
+		SPDLOG_INFO("loading textures");
 		load_textures();
 
 		RenderObject lostEmpire;
@@ -414,11 +415,11 @@ namespace vk_engine {
 
 		for (const auto& device : devices) {
 			vkGetPhysicalDeviceProperties(device, &_deviceProperties);
-			// if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-			_physicalDevice = device;
-			SPDLOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
-			break;
-			// }
+			if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+				_physicalDevice = device;
+				SPDLOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
+				break;
+			}
 		}
 
 		if (_physicalDevice == VK_NULL_HANDLE) {
@@ -1054,7 +1055,7 @@ namespace vk_engine {
 
 	void vk_renderer::load_textures() {
 		Texture lostEmpire;
-		if (vk_util::load_image_from_file(*this, "assets/lost_empire-RGBA.png", lostEmpire.Image)) {
+		if (vk_util::load_image_from_file(*this, "assets/lost_empire-RGBA.asset", lostEmpire.Image)) {
 			VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(lostEmpire.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 			VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &lostEmpire.imageView));
 
@@ -1134,7 +1135,7 @@ namespace vk_engine {
 
 	VkPresentModeKHR vk_renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
 				return availablePresentMode;
 			}
 		}
