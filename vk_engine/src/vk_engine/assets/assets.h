@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "glm/vec3.hpp"
-#include "glm/vec2.hpp"
 
 namespace vk_engine {
 
@@ -38,10 +36,10 @@ namespace vk_engine {
 
         // mesh
         struct Vertex {
-            glm::vec3 position;
-            glm::vec3 normal;
-            glm::vec3 color;
-            glm::vec2 uv;
+            float position[3];
+            float normal[3];
+            float color[3];
+            float uv[2];
         };
 
         struct Mesh {

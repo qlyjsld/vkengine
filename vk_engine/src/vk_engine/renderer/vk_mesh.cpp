@@ -1,5 +1,6 @@
 #include "vk_engine/renderer/vk_mesh.h"
 #include "vk_engine/assets/assets.h"
+#include "vk_engine/renderer/vk_renderer.h"
 
 #include <iostream>
 #include <future>
@@ -54,69 +55,72 @@ namespace vk_engine {
 		return description;
 	}
 
-	std::mutex vector_mutex;
+	void Mesh::load_from_obj(const char* filename, vk_renderer* renderer) {
+		assets::assetFile asset{};
+		assets::loadAssetFile(filename, asset);
 
-	Mesh load_shape(const tinyobj::attrib_t& attrib, const tinyobj::shape_t& shape) {
+		assets::meshInfo info = assets::readMeshInfo(&asset);
+
+		// allocate Staging Buffer
+		VkBufferCreateInfo stagingBufferInfo{};
+		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		// total size in bytes
+		stagingBufferInfo.size = info.meshSize;
+		stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+		// let vma know this buffer is gonna written by cpu and read by gpu
+		VmaAllocationCreateInfo allocationInfo{};
+		allocationInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+		AllocatedBuffer stagingBuffer;
+
+		vmaCreateBuffer(renderer->_allocator, &stagingBufferInfo, &allocationInfo, &stagingBuffer._buffer, &stagingBuffer._allocation, nullptr);
+
+		// copy vertex data
+		void* data;
+		vmaMapMemory(renderer->_allocator, stagingBuffer._allocation, &data);
+
+		std::cout << "compressed size: " << asset.binaryBlob.size() << std::endl;
+		std::cout << "dest size: " << info.meshSize << std::endl;
+
+		assets::unpackMesh(&info, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
+
+		std::cout << "unpacked!" << std::endl;
+
+		vmaUnmapMemory(renderer->_allocator, stagingBuffer._allocation);
+
+		// allocate Vertex Buffer
+		VkBufferCreateInfo vertexBufferInfo{};
+		vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		// total size in bytes
+		vertexBufferInfo.size = asset.binaryBlob.size();
+		vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+		// let vma know this buffer is gonna written by cpu and read by gpu
+		allocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
 		Mesh mesh;
+		mesh._vertices.resize(info.meshSize / sizeof(Vertex));
 
-		size_t index_offset = 0;
-		// loop over faces
-		for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
-			int fv = shape.mesh.num_face_vertices[f];
-			// loop over vertices of face
-			for (size_t v = 0; v < fv; v++) {
-				// access to vertex
-				tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
-				float vx = attrib.vertices[3 * idx.vertex_index + 0];
-				float vy = attrib.vertices[3 * idx.vertex_index + 1];
-				float vz = attrib.vertices[3 * idx.vertex_index + 2];
-				float nx = attrib.normals[3 * idx.normal_index + 0];
-				float ny = attrib.normals[3 * idx.normal_index + 1];
-				float nz = attrib.normals[3 * idx.normal_index + 2];
+		vmaCreateBuffer(renderer->_allocator, &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr);
 
-				Vertex vertex;
-				vertex.position.x = vx;
-				vertex.position.y = vy;
-				vertex.position.z = vz;
+		renderer->_deletionQueue.push_function([=]() {
+			vmaDestroyBuffer(renderer->_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+		});
 
-				vertex.normal.x = nx;
-				vertex.normal.x = ny;
-				vertex.normal.x = nz;
+		renderer->immediate_submit([=](VkCommandBuffer cmd) {
+			VkBufferCopy copy;
+			copy.srcOffset = 0;
+			copy.dstOffset = 0;
+			copy.size = asset.binaryBlob.size();
+			vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1, &copy);
+		});
 
-				vertex.color = vertex.normal;
+		vmaDestroyBuffer(renderer->_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 
-				// vertex uv
-				tinyobj::real_t ux = attrib.texcoords[2 * idx.texcoord_index + 0];
-				tinyobj::real_t uy = attrib.texcoords[2 * idx.texcoord_index + 1];
-
-				vertex.uv.x = ux;
-				vertex.uv.y = 1 - uy;
-
-				std::lock_guard<std::mutex> lock(vector_mutex);
-				mesh._vertices.push_back(std::move(vertex));
-			}
-			index_offset += fv;
-		}
-
-		return mesh;
-	}
-
-	std::unordered_map<std::string, Mesh> Mesh::load_from_obj(const char* filename) {
-		std::unordered_map<std::string, Mesh> meshes;
-
-		assets::assetFile file;
-		assets::loadAssetFile(filename, file);
-
-		assets::meshInfo info = assets::readMeshInfo(&file);
-
-		// Loop over shapes
-		for (size_t s = 0; s < info.shapeSize; s++) {
-			meshs.push_back();
-		}
+		renderer->_meshes["San_Miguel"] = std::move(mesh);
 
 		std::cout << "finished loading: " << filename << std::endl;
-
-		return meshes;
 	}
 
 }

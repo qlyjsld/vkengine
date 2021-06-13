@@ -246,9 +246,9 @@ namespace vk_engine {
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 1, 1, &_frames[i]._objectDescriptor, 0, nullptr);
 
 				//object data descriptor
-				if (first[i].material->textureSet != VK_NULL_HANDLE) {
+				/* if (first[i].material->textureSet != VK_NULL_HANDLE) {
 					vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 2, 1, &first[i].material->textureSet, 0, nullptr);
-				}
+				} */
 			}
 
 			if (lastMesh != first[i].mesh) {
@@ -312,6 +312,7 @@ namespace vk_engine {
 		createSwapChain();
 		createDescriptors();
 		createRenderPass();
+		createTexturelessPipeline();
 		createGraphicsPipeline();
 		createFrameBuffers();
 		createCommands();
@@ -321,16 +322,17 @@ namespace vk_engine {
 	void vk_renderer::init_scene() {
 		VK_LOG_INFO("Loading meshes...");
 		load_meshes();
-		VK_LOG_INFO("Loading textures...");
-		load_textures();
+		// VK_LOG_INFO("Loading textures...");
+		// load_textures();
 
 		RenderObject San_Miguel;
-		San_Miguel.material = get_material("defaultmesh");
+		San_Miguel.mesh = get_mesh("San_Miguel");
+		San_Miguel.material = get_material("texturelessMesh");
 		San_Miguel.transformMatrix = glm::mat4{ 1.0f };
 
 		_renderables.push_back(San_Miguel);
 
-		VkSamplerCreateInfo samplerInfo = vk_info::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+		/* VkSamplerCreateInfo samplerInfo = vk_info::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 		VkSampler blockySampler{};
 		vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
@@ -345,7 +347,7 @@ namespace vk_engine {
 		VkDescriptorImageInfo imageBufferInfo = vk_info::DescriptorImageInfo(blockySampler, _textures["San_Miguel"].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		VkWriteDescriptorSet texture1 = vk_info::WriteDescriptorSetImage(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, San_Miguel.material->textureSet, &imageBufferInfo, 0);
 
-		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
+		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr); */
 	}
 
 	void vk_renderer::createInstance() {
@@ -834,11 +836,93 @@ namespace vk_engine {
 		graphic_pipeline_info._pipelineLayout = _pipelineLayout;
 		_graphicsPipeline = graphic_pipeline_info.build_pipeline(_device, _renderpass);
 
-		create_material(_graphicsPipeline, _pipelineLayout, "defaultmesh");
+		create_material(_graphicsPipeline, _pipelineLayout, "defaultMesh");
 
 		_deletionQueue.push_function([=](){
 			vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 		});
+
+		vkDestroyShaderModule(_device, vertShaderModule, nullptr);
+		vkDestroyShaderModule(_device, fragShaderModule, nullptr);
+	}
+
+	void vk_renderer::createTexturelessPipeline() {
+		PipelineBuilder graphic_pipeline_info{};
+
+		auto vertShaderCode = readfile("shaders/textureless_mesh.spv");
+		auto fragShaderCode = readfile("shaders/textureless.spv");
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = vertShaderModule;
+		vertShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragShaderStageInfo.module = fragShaderModule;
+		fragShaderStageInfo.pName = "main";
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vk_info::PipelineLayoutCreateInfo();
+
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+		// hook the global set layout
+		VkDescriptorSetLayout setLayouts[] = { _globalSetLayout, _objectSetLayout };
+		pipelineLayoutInfo.setLayoutCount = 2;
+		pipelineLayoutInfo.pSetLayouts = setLayouts;
+
+		VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_texturelesspipelineLayout));
+
+		_deletionQueue.push_function([=]() {
+			vkDestroyPipelineLayout(_device, _texturelesspipelineLayout, nullptr);
+			});
+
+		VertexInputDescription description = Vertex::get_vertex_description();
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_info::VertexInputStateCreateInfo(description.bindings, description.attributes);
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = vk_info::InputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		VkDynamicState DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+		VkPipelineDynamicStateCreateInfo dynamicState{};
+		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.pNext = nullptr;
+		dynamicState.dynamicStateCount = 2;
+		dynamicState.pDynamicStates = DynamicStates;
+
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = nullptr;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = nullptr;
+
+		VkPipelineRasterizationStateCreateInfo rasterizer = vk_info::RasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		VkPipelineMultisampleStateCreateInfo multisampling = vk_info::MultisampleStateCreateInfo();
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = vk_info::ColorBlendAttachmentState();
+		VkPipelineDepthStencilStateCreateInfo DepthStencilState = vk_info::PipelineDepthStencilStateCreateInfo(true, true, VK_COMPARE_OP_LESS);
+
+		graphic_pipeline_info._shaderStages = shaderStages;
+		graphic_pipeline_info._vertexInputInfo = vertexInputInfo;
+		graphic_pipeline_info._inputAssembly = inputAssembly;
+		graphic_pipeline_info._viewportState = viewportState;
+		graphic_pipeline_info._rasterizer = rasterizer;
+		graphic_pipeline_info._multisampling = multisampling;
+		graphic_pipeline_info._depthStencil = DepthStencilState;
+		graphic_pipeline_info._colorBlendAttachment = colorBlendAttachment;
+		graphic_pipeline_info._dynamicState = dynamicState;
+		graphic_pipeline_info._pipelineLayout = _texturelesspipelineLayout;
+		_texturelesPipeline = graphic_pipeline_info.build_pipeline(_device, _renderpass);
+
+		create_material(_texturelesPipeline, _texturelesspipelineLayout, "texturelessMesh");
+
+		_deletionQueue.push_function([=]() {
+			vkDestroyPipeline(_device, _texturelesPipeline, nullptr);
+			});
 
 		vkDestroyShaderModule(_device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(_device, fragShaderModule, nullptr);
@@ -968,14 +1052,14 @@ namespace vk_engine {
 		return alignedSize;
 	}
 
-	/* Mesh* vk_renderer::get_mesh(const std::string& name) {
+	Mesh* vk_renderer::get_mesh(const std::string& name) {
 		if (_meshes.find(name) != _meshes.end()) {
 			return &_meshes[name];
 		}
 		else {
 			return nullptr;
 		}
-	} */
+	}
 
 	Material* vk_renderer::get_material(const std::string& name) {
 		if (_materials.find(name) != _materials.end()) {
@@ -995,18 +1079,7 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::load_meshes() {
-		std::unordered_map<std::string, Mesh> _meshes = Mesh::load_from_obj("assets/San_Miguel/san-miguel.asset");
-		if (!_meshes.size()) {
-			std::cout << "failed to load obj!" << std::endl;
-			abort();
-		}
-
-		for (auto& mesh : _meshes) {
-			auto task = std::async(std::launch::async, [&]() {
-				upload_mesh(mesh.second);
-			});
-		}
-		_meshes.clear();
+		Mesh::load_from_obj("assets/San_Miguel/san-miguel.asset", this);
 	}
 
 	void vk_renderer::upload_mesh(Mesh& mesh) {
@@ -1063,11 +1136,10 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::load_textures() {
-		std::cin.get();
 		for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("assets/San_Miguel/textures")) {
 			auto task = std::async(std::launch::async, [&]() {
 				Texture texture;
-				if (vk_util::load_image_from_file(*this, dirEntry.path().string().c_str(), texture.Image)) {
+				if (vk_util::load_image_from_file(this, dirEntry.path().string().c_str(), texture.Image)) {
 					VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(texture.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 					VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView));
 

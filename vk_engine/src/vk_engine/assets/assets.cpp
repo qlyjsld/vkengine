@@ -2,6 +2,7 @@
 #include "json.hpp"
 #include "lz4.h"
 #include <fstream>
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -112,7 +113,7 @@ namespace vk_engine {
         }
 
         void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest) {
-
+            LZ4_decompress_safe(sourcebuffer, dest, sourceSize, info->meshSize);
         }
 
         assetFile packMesh(meshInfo* info, void* meshData) {
@@ -133,6 +134,10 @@ namespace vk_engine {
             file.binaryBlob.resize(compressStaging);
             int compressedSize = LZ4_compress_default((const char*) meshData, file.binaryBlob.data(), info->meshSize, compressStaging);
             file.binaryBlob.resize(compressedSize);
+
+            std::cout << "meshSize: " << info->meshSize << std::endl;
+            std::cout << "compress staging: " << compressStaging << std::endl;
+            std::cout << "compressed size: " << compressedSize << std::endl;
 
             return file;
         }

@@ -30,7 +30,7 @@ namespace vk_engine {
 		// glm::mat4 transformMatrix;
 
 		AllocatedBuffer _vertexBuffer;
-		static std::unordered_map<std::string, Mesh> load_from_obj(const char* filename);
+		static void load_from_obj(const char* filename, struct vk_renderer* renderer);
 	};
 
 }

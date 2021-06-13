@@ -41,7 +41,8 @@ int main(int argc, char** argv) {
 
 	*/
 
-    std::string filePath = argv[1];
+    // std::string filePath = argv[1];
+    std::string filePath = "D:/cdev/vk_engine/vk_engine/build/assets/San_Miguel/san-miguel.obj";
 
 	// mesh
     // attrib will contain the vertex arrays of the file
@@ -63,10 +64,12 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    std::vector<vk_engine::assets::Mesh> meshes;
+    vk_engine::assets::Mesh meshes;
+    vk_engine::assets::meshInfo info{};
+
+    std::cout << "shapeSize: " << shapes.size() << std::endl;
 
     for (size_t s = 0; s < shapes.size(); s++) {
-        vk_engine::assets::Mesh mesh;
 
         size_t index_offset = 0;
         // loop over faces
@@ -84,39 +87,44 @@ int main(int argc, char** argv) {
                 float nz = attrib.normals[3 * idx.normal_index + 2];
 
                 vk_engine::assets::Vertex vertex;
-                vertex.position.x = vx;
-                vertex.position.y = vy;
-                vertex.position.z = vz;
+                vertex.position[0] = vx;
+                vertex.position[1] = vy;
+                vertex.position[2] = vz;
 
-                vertex.normal.x = nx;
-                vertex.normal.x = ny;
-                vertex.normal.x = nz;
+                vertex.normal[0] = nx;
+                vertex.normal[1] = ny;
+                vertex.normal[2] = nz;
 
-                vertex.color = vertex.normal;
+                vertex.color[0] = vertex.normal[0];
+                vertex.color[1] = vertex.normal[1];
+                vertex.color[2] = vertex.normal[2];
 
                 // vertex uv
                 tinyobj::real_t ux = attrib.texcoords[2 * idx.texcoord_index + 0];
                 tinyobj::real_t uy = attrib.texcoords[2 * idx.texcoord_index + 1];
 
-                vertex.uv.x = ux;
-                vertex.uv.y = 1 - uy;
+                vertex.uv[0] = ux;
+                vertex.uv[1] = 1 - uy;
 
-                mesh._vertices.push_back(std::move(vertex));
+                meshes._vertices.push_back(vertex);
             }
             index_offset += fv;
         }
-
-        meshes.push_back(std::move(mesh));
     }
 
-    vk_engine::assets::meshInfo info{};
-    info.meshSize = meshes.size() * sizeof(vk_engine::assets::Vertex);
+    info.meshSize = meshes._vertices.size() * sizeof(meshes._vertices[0]);
     info.shapeSize = shapes.size();
 
-    void* meshPtr = meshes.data();
+    std::cout << "packing meshes..." << std::endl;
+
+    void* meshPtr = meshes._vertices.data();
     vk_engine::assets::assetFile file = vk_engine::assets::packMesh(&info, meshPtr);
 
+    std::cout << "packed mesh" << std::endl;
+
     std::cout << filePath.substr(0, filePath.size() - 4) + ".asset" << std::endl;
+
+    std::cout << "saving..." << std::endl;
 
     vk_engine::assets::saveAssetFile((filePath.substr(0, filePath.size() - 4) + ".asset").c_str(), file);
 

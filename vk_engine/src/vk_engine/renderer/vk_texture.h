@@ -6,7 +6,7 @@
 namespace vk_engine {
 
 	namespace vk_util {
-		bool load_image_from_file(vk_engine::vk_renderer& engine, const char* file, AllocatedImage& outImage);
+		bool load_image_from_file(vk_engine::vk_renderer* renderer, const char* file, AllocatedImage& outImage);
 	}
 
 }
