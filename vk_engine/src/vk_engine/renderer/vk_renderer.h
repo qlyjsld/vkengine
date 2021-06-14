@@ -143,6 +143,8 @@ namespace vk_engine {
 		void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame);
 		std::vector<IndirectBatch> compactDraw(RenderObject* objs, int count);
 
+		AllocatedBuffer _indirectBuffer;
+
 		// Vulkan memory allocator
 		VmaAllocator _allocator;
 
@@ -202,7 +204,7 @@ namespace vk_engine {
 		VkPhysicalDeviceProperties _deviceProperties;
 
 		// semaphore for multithreaded command recording
-		std::counting_semaphore<1> _drawSemaphore{ 0 };
+		std::counting_semaphore<2> _drawSemaphore{ 0 };
 
 		// init functions
 		void init_window();

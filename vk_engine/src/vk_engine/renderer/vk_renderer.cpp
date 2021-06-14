@@ -71,7 +71,26 @@ namespace vk_engine {
 
 	// main loop involve rendering on the screen
 	void vk_renderer::mainloop() {
-		auto worker = std::async(std::launch::async, [&]() {
+		auto indirectCommandsWorker = std::async(std::launch::async, [&]() {
+			while (!glfwWindowShouldClose(_window)) {
+				_drawSemaphore.acquire();
+
+				VkDrawIndirectCommand* drawCommands;
+				vmaMapMemory(_allocator, _indirectBuffer._allocation, (void**)&drawCommands);
+
+				for (int i = 0; i < _renderables.size(); i++) {
+					RenderObject& obj = _renderables[i];
+					drawCommands[i].vertexCount = obj.mesh->_vertices.size();
+					drawCommands[i].instanceCount = 1;
+					drawCommands[i].firstVertex = 0;
+					drawCommands[i].firstInstance = i;
+				}
+
+				vmaUnmapMemory(_allocator, _indirectBuffer._allocation);
+			}
+		});
+
+		auto cpuToGpuWorker = std::async(std::launch::async, [&]() {
 			while (!glfwWindowShouldClose(_window)) {
 				_drawSemaphore.acquire();
 
@@ -131,7 +150,8 @@ namespace vk_engine {
 			drawFrame();
 		}
 
-		worker.wait();
+		indirectCommandsWorker.wait();
+		cpuToGpuWorker.wait();
 		vkDeviceWaitIdle(_device);
 	}
 
@@ -141,6 +161,7 @@ namespace vk_engine {
 		vkResetFences(_device, 1, &_frames[_currentFrame]._inFlightFences);
 
 		// start memcpy to gpu
+		_drawSemaphore.release();
 		_drawSemaphore.release();
 
 		uint32_t imageIndex;
@@ -250,9 +271,10 @@ namespace vk_engine {
 			VkDeviceSize offset = 0;
 			vkCmdBindVertexBuffers(cmd, 0, 1, &draw.mesh->_vertexBuffer._buffer, &offset);
 
-			for (int i = draw.first; i < draw.first + draw.count; i++) {
-				vkCmdDraw(cmd, draw.mesh->_vertices.size(), 1, 0, i);
-			}
+			VkDeviceSize indirectOffset = draw.first * sizeof(VkDrawIndirectCommand);
+			uint32_t drawStride = sizeof(VkDrawIndirectCommand);
+
+			vkCmdDrawIndirect(cmd, _indirectBuffer._buffer, indirectOffset, draw.count, drawStride);
 		}
 	}
 
@@ -579,6 +601,13 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::createDescriptors() {
+		// create indirect buffer
+		_indirectBuffer = create_buffer(FRAME_OVERLAP * sizeof(VkDrawIndirectCommand), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+		_deletionQueue.push_function([=]() {
+			vmaDestroyBuffer(_allocator, _indirectBuffer._buffer, _indirectBuffer._allocation);
+		});
+
 		// create a descriptor pool that will hold 10 uniform buffers
 		std::vector<VkDescriptorPoolSize> sizes = {
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4 },
@@ -1266,7 +1295,7 @@ namespace vk_engine {
 
 	VkPresentModeKHR vk_renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+			if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) { // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
 				return availablePresentMode;
 			}
 		}
