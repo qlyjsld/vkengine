@@ -4,6 +4,7 @@
 #include <deque>
 #include <functional>
 #include <string>
+#include <semaphore>
 #include <glm/glm.hpp>
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -95,6 +96,13 @@ namespace vk_engine {
 		VkCommandPool _commandPool;
 	};
 
+	struct IndirectBatch {
+		Mesh* mesh;
+		Material* material;
+		uint32_t first;
+		uint32_t count;
+	};
+
 	// vk_engine is a Vulkan rendering engine
 	class vk_renderer {
 	public:
@@ -133,6 +141,7 @@ namespace vk_engine {
 		// draw functions
 		void drawFrame();
 		void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame);
+		std::vector<IndirectBatch> compactDraw(RenderObject* objs, int count);
 
 		// Vulkan memory allocator
 		VmaAllocator _allocator;
@@ -191,6 +200,9 @@ namespace vk_engine {
 
 		// device properties
 		VkPhysicalDeviceProperties _deviceProperties;
+
+		// semaphore for multithreaded command recording
+		std::counting_semaphore<1> _drawSemaphore{ 0 };
 
 		// init functions
 		void init_window();

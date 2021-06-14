@@ -47,7 +47,7 @@ namespace vk_engine {
 	}
 
 	glm::mat4 Camera::getProjectionMatrix(float width, float height) {
-		auto projection = glm::perspective(glm::radians(70.0f), width / height, 0.1f, 200.0f);
+		auto projection = glm::perspective(glm::radians(90.0f), width / height, 0.1f, 2000.0f);
 		projection[1][1] *= -1;
 		return projection;
 	}

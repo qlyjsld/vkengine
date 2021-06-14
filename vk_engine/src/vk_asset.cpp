@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 	*/
 
     // std::string filePath = argv[1];
-    std::string filePath = "D:/cdev/vk_engine/vk_engine/build/assets/San_Miguel/san-miguel.obj";
+    std::string filePath = "D:/cdev/vk_engine/vk_engine/build/assets/Exterior/exterior.obj";
 
 	// mesh
     // attrib will contain the vertex arrays of the file

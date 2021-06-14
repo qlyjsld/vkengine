@@ -118,7 +118,7 @@ namespace vk_engine {
 
 		vmaDestroyBuffer(renderer->_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 
-		renderer->_meshes["San_Miguel"] = std::move(mesh);
+		renderer->_meshes[filename] = std::move(mesh);
 
 		std::cout << "finished loading: " << filename << std::endl;
 	}

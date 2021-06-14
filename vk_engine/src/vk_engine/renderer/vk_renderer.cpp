@@ -71,6 +71,40 @@ namespace vk_engine {
 
 	// main loop involve rendering on the screen
 	void vk_renderer::mainloop() {
+		auto worker = std::async(std::launch::async, [&]() {
+			while (!glfwWindowShouldClose(_window)) {
+				_drawSemaphore.acquire();
+
+				_cameraParameters.view = _camera->getViewMatrix();
+				_cameraParameters.projection = _camera->getProjectionMatrix(WIDTH, HEIGHT);
+				_cameraParameters.viewproj = _cameraParameters.projection * _cameraParameters.view;
+
+				char* camdata;
+				vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
+				camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * _currentFrame;
+				memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
+				vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
+
+				char* sceneData;
+				vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
+				sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * _currentFrame;
+				memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
+				vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
+
+				void* objData;
+				vmaMapMemory(_allocator, _frames[_currentFrame]._objectBuffer._allocation, &objData);
+
+				GPUObjectData* objectSSBO = (GPUObjectData*)objData;
+
+				for (int i = 0; i < _renderables.size(); i++) {
+					RenderObject& object = _renderables[i];
+					objectSSBO[i].modelMatrix = object.transformMatrix;
+				}
+
+				vmaUnmapMemory(_allocator, _frames[_currentFrame]._objectBuffer._allocation);
+			}
+		});
+
 		while (!glfwWindowShouldClose(_window)) {
 			glfwPollEvents();
 
@@ -96,6 +130,8 @@ namespace vk_engine {
 
 			drawFrame();
 		}
+
+		worker.wait();
 		vkDeviceWaitIdle(_device);
 	}
 
@@ -104,6 +140,9 @@ namespace vk_engine {
 		vkWaitForFences(_device, 1, &_frames[_currentFrame]._inFlightFences, VK_TRUE, UINT64_MAX);
 		vkResetFences(_device, 1, &_frames[_currentFrame]._inFlightFences);
 
+		// start memcpy to gpu
+		_drawSemaphore.release();
+
 		uint32_t imageIndex;
 		vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _frames[_currentFrame]._imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 		vkResetCommandBuffer(_frames[_currentFrame]._maincommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
@@ -111,7 +150,7 @@ namespace vk_engine {
 		// rerecord the command buffer
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0; // optional
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // optional
 		beginInfo.pInheritanceInfo = nullptr; // optional
 	
 		// clear depth at 1
@@ -188,7 +227,7 @@ namespace vk_engine {
 
 		vkQueuePresentKHR(_presentQueue, &presentInfo);
 
-		_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+		_currentFrame = 1 - _currentFrame;
 		_frameNumber += 1;
 
 		/* auto end = std::chrono::steady_clock::now();
@@ -197,68 +236,53 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
-		int frameIndex = _frameNumber % FRAME_OVERLAP;
+		std::vector<IndirectBatch> draws = compactDraw(first, count);
 
-		std::async(std::launch::async, [&]() {
-			_cameraParameters.view = _camera->getViewMatrix();
-			_cameraParameters.projection = _camera->getProjectionMatrix(WIDTH, HEIGHT);
-			_cameraParameters.viewproj = _cameraParameters.projection * _cameraParameters.view;
+		for (const auto& draw : draws) {
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline);
 
-			char* camdata;
-			vmaMapMemory(_allocator, _cameraParametersBuffer._allocation, (void**)&camdata);
-			camdata += pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex;
-			memcpy(camdata, &_cameraParameters, sizeof(GPUCameraData));
-			vmaUnmapMemory(_allocator, _cameraParametersBuffer._allocation);
+			uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * _currentFrame, pad_uniform_buffer_size(sizeof(GPUSceneData)) * _currentFrame };
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipelineLayout, 0, 1, &_globalDescriptor, 2, uniform_offset);
 
-			char* sceneData;
-			vmaMapMemory(_allocator, _sceneParametersBuffer._allocation, (void**)&sceneData);
-			sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
-			memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
-			vmaUnmapMemory(_allocator, _sceneParametersBuffer._allocation);
-		});
+			//object data descriptor
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipelineLayout, 1, 1, &frame._objectDescriptor, 0, nullptr);
 
-		std::async(std::launch::async, [&]() {
-			void* objData;
-			vmaMapMemory(_allocator, frame._objectBuffer._allocation, &objData);
+			VkDeviceSize offset = 0;
+			vkCmdBindVertexBuffers(cmd, 0, 1, &draw.mesh->_vertexBuffer._buffer, &offset);
 
-			GPUObjectData* objectSSBO = (GPUObjectData*)objData;
-
-			for (int i = 0; i < count; i++) {
-				RenderObject& object = first[i];
-				objectSSBO[i].modelMatrix = object.transformMatrix;
+			for (int i = draw.first; i < draw.first + draw.count; i++) {
+				vkCmdDraw(cmd, draw.mesh->_vertices.size(), 1, 0, i);
 			}
-
-			vmaUnmapMemory(_allocator, frame._objectBuffer._allocation);
-		});
-
-		Mesh* lastMesh = nullptr;
-		Material* lastMaterial = nullptr;
-
-		for (int i = 0; i < count; i++) {
-			if (lastMaterial != first[i].material) {
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipeline);
-				lastMaterial = first[i].material;
-
-				uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * frameIndex, pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex };
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 0, 1, &_globalDescriptor, 2, uniform_offset);
-
-				//object data descriptor
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 1, 1, &_frames[i]._objectDescriptor, 0, nullptr);
-
-				//object data descriptor
-				/* if (first[i].material->textureSet != VK_NULL_HANDLE) {
-					vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, first[i].material->pipelineLayout, 2, 1, &first[i].material->textureSet, 0, nullptr);
-				} */
-			}
-
-			if (lastMesh != first[i].mesh) {
-				// bind the mesh vertex buffer with offset 0
-				VkDeviceSize offset = 0;
-				vkCmdBindVertexBuffers(cmd, 0, 1, &first[i].mesh->_vertexBuffer._buffer, &offset);
-				lastMesh = first[i].mesh;
-			}
-			vkCmdDraw(cmd, first[i].mesh->_vertices.size(), 1, 0, 0);
 		}
+	}
+
+	std::vector<IndirectBatch> vk_renderer::compactDraw(RenderObject* objs, int count) {
+		std::vector<IndirectBatch> draws;
+
+		IndirectBatch draw;
+		draw.mesh = objs[0].mesh;
+		draw.material = objs[0].material;
+		draw.first = 0;
+		draw.count = 1;
+
+		draws.push_back(draw);
+
+		for (int i = 1; i < count; i++) {
+			if (objs[i].mesh == draws.back().mesh && objs[i].material == draws.back().material) {
+				draws.back().count++;
+			}
+			else {
+				IndirectBatch newdraw;
+				newdraw.mesh = objs[i].mesh;
+				newdraw.material = objs[i].material;
+				newdraw.first = i;
+				newdraw.count = 1;
+
+				draws.push_back(newdraw);
+			}
+		}
+
+		return draws;
 	}
 
 	// run the engine
@@ -321,16 +345,31 @@ namespace vk_engine {
 
 	void vk_renderer::init_scene() {
 		VK_LOG_INFO("Loading meshes...");
+
+		auto start = std::chrono::steady_clock::now();
 		load_meshes();
+		auto end = std::chrono::steady_clock::now();
+		std::chrono::duration<double> elapsed_seconds = end - start;
+		std::cout << "decompress time: " << elapsed_seconds.count() << "s\n";
+
 		// VK_LOG_INFO("Loading textures...");
 		// load_textures();
 
-		RenderObject San_Miguel;
-		San_Miguel.mesh = get_mesh("San_Miguel");
-		San_Miguel.material = get_material("texturelessMesh");
-		San_Miguel.transformMatrix = glm::mat4{ 1.0f };
+		RenderObject interior;
+		interior.mesh = get_mesh("assets/Interior/interior.asset");
+		interior.material = get_material("texturelessMesh");
+		interior.transformMatrix = glm::scale(glm::mat4{ 1.0f }, glm::vec3(0.05f, 0.05f, 0.05f));
 
-		_renderables.push_back(San_Miguel);
+		RenderObject exterior;
+		exterior.mesh = get_mesh("assets/Exterior/exterior.asset");
+		exterior.material = get_material("texturelessMesh");
+		exterior.transformMatrix = glm::scale(glm::mat4{ 1.0f }, glm::vec3(0.05f, 0.05f, 0.05f));
+
+		std::cout << "vertices: " << _meshes["assets/Interior/interior.asset"]._vertices.size() << std::endl;
+		std::cout << "vertices: " << _meshes["assets/Exterior/exterior.asset"]._vertices.size() << std::endl;
+
+		_renderables.push_back(interior);
+		_renderables.push_back(exterior);
 
 		/* VkSamplerCreateInfo samplerInfo = vk_info::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
@@ -1079,7 +1118,13 @@ namespace vk_engine {
 	}
 
 	void vk_renderer::load_meshes() {
-		Mesh::load_from_obj("assets/San_Miguel/san-miguel.asset", this);
+		auto worker1 = std::async(std::launch::async, [&]() {
+			Mesh::load_from_obj("assets/Interior/interior.asset", this);
+		});
+
+		auto worker2 = std::async(std::launch::async, [&]() {
+			Mesh::load_from_obj("assets/Exterior/exterior.asset", this);
+		});
 	}
 
 	void vk_renderer::upload_mesh(Mesh& mesh) {
@@ -1137,7 +1182,7 @@ namespace vk_engine {
 
 	void vk_renderer::load_textures() {
 		for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("assets/San_Miguel/textures")) {
-			auto task = std::async(std::launch::async, [&]() {
+			auto worker = std::async(std::launch::async, [&]() {
 				Texture texture;
 				if (vk_util::load_image_from_file(this, dirEntry.path().string().c_str(), texture.Image)) {
 					VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(texture.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
