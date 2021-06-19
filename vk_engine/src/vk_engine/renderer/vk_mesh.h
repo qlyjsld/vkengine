@@ -7,16 +7,19 @@
 #include <string>
 #include <unordered_map>
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	struct VertexInputDescription {
+	struct VertexInputDescription
+	{
 		std::vector<VkVertexInputBindingDescription> bindings;
 		std::vector<VkVertexInputAttributeDescription> attributes;
 
 		VkPipelineVertexInputStateCreateFlags flags = 0;
 	};
 
-	struct Vertex {
+	struct Vertex
+	{
 		glm::vec3 position;
 		glm::vec3 normal;
 		glm::vec3 color;
@@ -25,7 +28,8 @@ namespace vk_engine {
 		static VertexInputDescription get_vertex_description();
 	};
 
-	struct Mesh {
+	struct Mesh
+	{
 		std::vector<Vertex> _vertices;
 		// glm::mat4 transformMatrix;
 

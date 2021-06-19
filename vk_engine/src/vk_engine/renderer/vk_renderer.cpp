@@ -25,7 +25,8 @@ const bool enableValidationLayers = true;
 
 // vulkan related error detection macro
 #define VK_CHECK(x)\
-	do{\
+	do\
+	{\
 		VkResult err = x;\
 		if (err){\
 			std::cout << "Error: " << err << std::endl;\
@@ -33,7 +34,8 @@ const bool enableValidationLayers = true;
 		}\
 	} while (0);
 
-namespace vk_engine {
+namespace vk_engine
+{
 
 	constexpr float WIDTH = 1600.0f;
 	constexpr float HEIGHT = 900.0f;
@@ -45,10 +47,12 @@ namespace vk_engine {
 	std::shared_ptr<spdlog::logger> logger::_corelogger;
 	std::shared_ptr<spdlog::logger> logger::_clientlogger;
 
-	static std::vector<char> readfile(const std::string & filename) {
+	static std::vector<char> readfile(const std::string & filename)
+	{
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-		if (!file.is_open()) {
+		if (!file.is_open())
+		{
 			throw std::runtime_error("failed to open file");
 		}
 
@@ -63,22 +67,27 @@ namespace vk_engine {
 		return buffer;
 	}
 
-	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+	{
+		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		{
 			glfwSetWindowShouldClose(window, 1);
 		}
 	}
 
 	// main loop involve rendering on the screen
 	void vk_renderer::mainloop() {
-		auto indirectCommandsWorker = std::async(std::launch::async, [&]() {
-			while (!glfwWindowShouldClose(_window)) {
+		auto indirectCommandsWorker = std::async(std::launch::async, [&]()
+		{
+			while (!glfwWindowShouldClose(_window))
+			{
 				_drawSemaphore.acquire();
 
 				VkDrawIndirectCommand* drawCommands;
 				vmaMapMemory(_allocator, _indirectBuffer._allocation, (void**)&drawCommands);
 
-				for (int i = 0; i < _renderables.size(); i++) {
+				for (int i = 0; i < _renderables.size(); i++)
+				{
 					RenderObject& obj = _renderables[i];
 					drawCommands[i].vertexCount = obj.mesh->_vertices.size();
 					drawCommands[i].instanceCount = 1;
@@ -90,8 +99,10 @@ namespace vk_engine {
 			}
 		});
 
-		auto cpuToGpuWorker = std::async(std::launch::async, [&]() {
-			while (!glfwWindowShouldClose(_window)) {
+		auto cpuToGpuWorker = std::async(std::launch::async, [&]()
+		{
+			while (!glfwWindowShouldClose(_window))
+			{
 				_drawSemaphore.acquire();
 
 				_cameraParameters.view = _camera->getViewMatrix();
@@ -115,7 +126,8 @@ namespace vk_engine {
 
 				GPUObjectData* objectSSBO = (GPUObjectData*)objData;
 
-				for (int i = 0; i < _renderables.size(); i++) {
+				for (int i = 0; i < _renderables.size(); i++)
+				{
 					RenderObject& object = _renderables[i];
 					objectSSBO[i].modelMatrix = object.transformMatrix;
 				}
@@ -124,7 +136,8 @@ namespace vk_engine {
 			}
 		});
 
-		while (!glfwWindowShouldClose(_window)) {
+		while (!glfwWindowShouldClose(_window))
+		{
 			glfwPollEvents();
 
 			// handle user's input
@@ -155,7 +168,8 @@ namespace vk_engine {
 		vkDeviceWaitIdle(_device);
 	}
 
-	void vk_renderer::drawFrame() {
+	void vk_renderer::drawFrame()
+	{
 		// auto start = std::chrono::steady_clock::now();
 		vkWaitForFences(_device, 1, &_frames[_currentFrame]._inFlightFences, VK_TRUE, UINT64_MAX);
 		vkResetFences(_device, 1, &_frames[_currentFrame]._inFlightFences);
@@ -256,10 +270,12 @@ namespace vk_engine {
 		std::cout << "frame time: " << elapsed_seconds.count() * 100 << "ms\n"; */
 	}
 
-	void vk_renderer::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
+	void vk_renderer::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame)
+	{
 		std::vector<IndirectBatch> draws = compactDraw(first, count);
 
-		for (const auto& draw : draws) {
+		for (const auto& draw : draws)
+		{
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline);
 
 			uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * _currentFrame, pad_uniform_buffer_size(sizeof(GPUSceneData)) * _currentFrame };
@@ -278,7 +294,8 @@ namespace vk_engine {
 		}
 	}
 
-	std::vector<IndirectBatch> vk_renderer::compactDraw(RenderObject* objs, int count) {
+	std::vector<IndirectBatch> vk_renderer::compactDraw(RenderObject* objs, int count)
+	{
 		std::vector<IndirectBatch> draws;
 
 		IndirectBatch draw;
@@ -289,11 +306,14 @@ namespace vk_engine {
 
 		draws.push_back(draw);
 
-		for (int i = 1; i < count; i++) {
-			if (objs[i].mesh == draws.back().mesh && objs[i].material == draws.back().material) {
+		for (int i = 1; i < count; i++)
+		{
+			if (objs[i].mesh == draws.back().mesh && objs[i].material == draws.back().material)
+			{
 				draws.back().count++;
 			}
-			else {
+			else
+			{
 				IndirectBatch newdraw;
 				newdraw.mesh = objs[i].mesh;
 				newdraw.material = objs[i].material;
@@ -308,7 +328,8 @@ namespace vk_engine {
 	}
 
 	// run the engine
-	void vk_renderer::run() {
+	void vk_renderer::run()
+	{
 		logger::init();
 		init_window();
 		VK_LOG_INFO("GLFW window initialized successfully");
@@ -323,7 +344,8 @@ namespace vk_engine {
 	}
 
 	// initialize the GLFW Window
-	void vk_renderer::init_window() {
+	void vk_renderer::init_window()
+	{
 		if (!glfwInit())
 			throw std::runtime_error("GLFW initialization failed!");
 
@@ -333,14 +355,16 @@ namespace vk_engine {
 		_window = glfwCreateWindow(WIDTH, HEIGHT, "vk_renderer", NULL, NULL);
 	}
 
-	void vk_renderer::init_input() {
+	void vk_renderer::init_input()
+	{
 		glfwSetKeyCallback(_window, key_callback);
 		_camera = new Camera;
 		glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 
 	// initialize vulkan such as _instance, _device
-	void vk_renderer::init_vulkan() {
+	void vk_renderer::init_vulkan()
+	{
 		createInstance();
 		createLogicalDevice();
 
@@ -351,7 +375,8 @@ namespace vk_engine {
 		allocatorInfo.instance = _instance;
 		vmaCreateAllocator(&allocatorInfo, &_allocator);
 	
-		_deletionQueue.push_function([&](){
+		_deletionQueue.push_function([&]()
+		{
 			vmaDestroyAllocator(_allocator);
 		});
 
@@ -365,7 +390,8 @@ namespace vk_engine {
 		createSyncObjects();
 	}
 
-	void vk_renderer::init_scene() {
+	void vk_renderer::init_scene()
+	{
 		VK_LOG_INFO("Loading meshes...");
 
 		auto start = std::chrono::steady_clock::now();
@@ -411,9 +437,11 @@ namespace vk_engine {
 		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr); */
 	}
 
-	void vk_renderer::createInstance() {
+	void vk_renderer::createInstance()
+	{
 		// check validation layers availability
-		if (enableValidationLayers && !vk_support::checkValidationLayerSupport()) {
+		if (enableValidationLayers && !vk_support::checkValidationLayerSupport())
+		{
 			throw std::runtime_error("validation layers requested, but not available!");
 		}
 
@@ -435,28 +463,34 @@ namespace vk_engine {
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = vk_info::DebugMessengerCreateInfo(debugCallback);
 
 		// enable validation layers
-		if (enableValidationLayers) {
+		if (enableValidationLayers)
+		{
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
 		}
-		else {
+		else
+		{
 			createInfo.enabledLayerCount = 0;
 		}
 
 		// create the _instance
 		VK_CHECK(vkCreateInstance(&createInfo, nullptr, &_instance));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyInstance(_instance, nullptr);
 		});
 
 		// setup debug messenger
-		if (enableValidationLayers) {
-			if (vk_support::CreateDebugUtilsMessengerEXT(_instance, &debugCreateInfo, nullptr, &_debugmessager) != VK_SUCCESS) {
+		if (enableValidationLayers)
+		{
+			if (vk_support::CreateDebugUtilsMessengerEXT(_instance, &debugCreateInfo, nullptr, &_debugmessager) != VK_SUCCESS)
+			{
 				throw std::runtime_error("failed to set up debug messenger!");
 			}
-			_deletionQueue.push_function([=](){
+			_deletionQueue.push_function([=]()
+			{
 				vk_support::DestroyDebugUtilsMessengerEXT(_instance, _debugmessager, nullptr);
 			});
 		}
@@ -464,33 +498,39 @@ namespace vk_engine {
 		//create surface
 		VK_CHECK(glfwCreateWindowSurface(_instance, _window, nullptr, &_surface));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroySurfaceKHR(_instance, _surface, nullptr);
 		});
 	}
 
-	void vk_renderer::createLogicalDevice() {
+	void vk_renderer::createLogicalDevice()
+	{
 		// pick physical device
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
 
-		if (deviceCount == 0) {
+		if (deviceCount == 0)
+		{
 			throw std::runtime_error("no physical device available!");
 		}
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
 
-		for (const auto& device : devices) {
+		for (const auto& device : devices)
+		{
 			vkGetPhysicalDeviceProperties(device, &_deviceProperties);
-			if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			if (_deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			{
 				_physicalDevice = device;
 				VK_LOG_INFO("The GPU has a minimum buffer alignment of " + std::to_string(_deviceProperties.limits.minUniformBufferOffsetAlignment));
 				break;
 			}
 		}
 
-		if (_physicalDevice == VK_NULL_HANDLE) {
+		if (_physicalDevice == VK_NULL_HANDLE)
+		{
 			throw std::runtime_error("no physical device available!");
 		}
 
@@ -501,7 +541,8 @@ namespace vk_engine {
 		std::set<uint32_t> uniqueQueueFamilies = { _indices.graphicFamily.value(), _indices.presentFamily.value() };
 
 		float queuePriority = 1.0f;
-		for (uint32_t queueFamily : uniqueQueueFamilies) {
+		for (uint32_t queueFamily : uniqueQueueFamilies)
+		{
 			VkDeviceQueueCreateInfo queueCreateInfo = vk_info::DeviceQueueCreateInfo(queueFamily, queuePriority);
 			queueCreateInfos.push_back(queueCreateInfo);
 		}
@@ -519,7 +560,8 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyDevice(_device, nullptr);
 		});
 
@@ -528,7 +570,8 @@ namespace vk_engine {
 		vkGetDeviceQueue(_device, _indices.presentFamily.value(), 0, &_presentQueue);
 	}
 
-	void vk_renderer::createSwapChain() {
+	void vk_renderer::createSwapChain()
+	{
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(_physicalDevice);
 		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -539,7 +582,8 @@ namespace vk_engine {
 
 		uint32_t image_count = swapChainSupport.capabilities.minImageCount + 1;
 
-		if (swapChainSupport.capabilities.maxImageCount > 0 && image_count > swapChainSupport.capabilities.maxImageCount) {
+		if (swapChainSupport.capabilities.maxImageCount > 0 && image_count > swapChainSupport.capabilities.maxImageCount)
+		{
 			image_count = swapChainSupport.capabilities.maxImageCount;
 		}
 
@@ -547,7 +591,8 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateSwapchainKHR(_device, &createInfo, nullptr, &_swapChain));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroySwapchainKHR(_device, _swapChain, nullptr);
 		});
 
@@ -558,7 +603,8 @@ namespace vk_engine {
 		// create Image Views
 		_swapChainImageViews.resize(_swapChainImages.size());
 
-		for (size_t i = 0; i < _swapChainImages.size(); i++) {
+		for (size_t i = 0; i < _swapChainImages.size(); i++)
+		{
 			VkImageViewCreateInfo createInfo = vk_info::ImageViewCreateInfo(_swapChainImages[i], _swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 			VK_CHECK(vkCreateImageView(_device, &createInfo, nullptr, &_swapChainImageViews[i]));
 			_deletionQueue.push_function([=](){
@@ -566,7 +612,8 @@ namespace vk_engine {
 			});
 		}
 
-		VkExtent3D depthImageExtent = {
+		VkExtent3D depthImageExtent =
+		{
 			extent.width,
 			extent.height,
 			1
@@ -586,7 +633,8 @@ namespace vk_engine {
 		// allocate and create the image
 		vmaCreateImage(_allocator, &dimg_info, &dimg_allocInfo, &_depthImage._image, &_depthImage._allocation, nullptr);
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
 		});
 
@@ -595,21 +643,25 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyImageView(_device, _depthImageView, nullptr);
 		});
 	}
 
-	void vk_renderer::createDescriptors() {
+	void vk_renderer::createDescriptors()
+	{
 		// create indirect buffer
 		_indirectBuffer = create_buffer(FRAME_OVERLAP * sizeof(VkDrawIndirectCommand), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vmaDestroyBuffer(_allocator, _indirectBuffer._buffer, _indirectBuffer._allocation);
 		});
 
 		// create a descriptor pool that will hold 10 uniform buffers
-		std::vector<VkDescriptorPoolSize> sizes = {
+		std::vector<VkDescriptorPoolSize> sizes =
+		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4 },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4 },
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4}
@@ -626,21 +678,24 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateDescriptorPool(_device, &poolInfo, nullptr, &_descriptorPool));
 
-		_deletionQueue.push_function([&]() {
+		_deletionQueue.push_function([&]()
+		{
 			vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
 		});
 
 		size_t sceneParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData));
 		_sceneParametersBuffer = create_buffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vmaDestroyBuffer(_allocator, _sceneParametersBuffer._buffer, _sceneParametersBuffer._allocation);
 		});
 
 		size_t cameraParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUCameraData));
 		_cameraParametersBuffer = create_buffer(cameraParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vmaDestroyBuffer(_allocator, _cameraParametersBuffer._buffer, _cameraParametersBuffer._allocation);
 		});
 
@@ -660,9 +715,10 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateDescriptorSetLayout(_device, &set1Info, nullptr, &_globalSetLayout));
 
-		_deletionQueue.push_function([&]() {
+		_deletionQueue.push_function([&]()
+		{
 			vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
-			});
+		});
 
 		// allocate one descriptor set for each frame
 		VkDescriptorSetAllocateInfo allocInfo{};
@@ -701,15 +757,18 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateDescriptorSetLayout(_device, &set2Info, nullptr, &_objectSetLayout));
 
-		_deletionQueue.push_function([&]() {
+		_deletionQueue.push_function([&]()
+		{
 			vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
 		});
 
-		for (int i = 0; i < FRAME_OVERLAP; i++) {
+		for (int i = 0; i < FRAME_OVERLAP; i++)
+		{
 			const int MAX_OBJECTS = 32767;
 			_frames[i]._objectBuffer = create_buffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-			_deletionQueue.push_function([=]() {
+			_deletionQueue.push_function([=]()
+			{
 				vmaDestroyBuffer(_allocator, _frames[i]._objectBuffer._buffer, _frames[i]._objectBuffer._allocation);
 			});
 
@@ -747,12 +806,14 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateDescriptorSetLayout(_device, &set3Info, nullptr, &_textureSetLayout));
 
-		_deletionQueue.push_function([&]() {
+		_deletionQueue.push_function([&]()
+		{
 			vkDestroyDescriptorSetLayout(_device, _textureSetLayout, nullptr);
 		});
 	}
 
-	void vk_renderer::createRenderPass() {
+	void vk_renderer::createRenderPass()
+	{
 		VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = _swapChainImageFormat;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -800,12 +861,14 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderpass));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyRenderPass(_device, _renderpass, nullptr);
 		});
 	}
 
-	VkPipeline vk_engine::PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass) {
+	VkPipeline vk_engine::PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
+	{
 		VkPipelineColorBlendStateCreateInfo colorBlending = vk_info::ColorBlendStateCreateInfo(_colorBlendAttachment);
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -832,7 +895,8 @@ namespace vk_engine {
 		return pipeline;
 	}
 
-	void vk_renderer::createGraphicsPipeline() {
+	void vk_renderer::createGraphicsPipeline()
+	{
 		PipelineBuilder graphic_pipeline_info{};
 
 		auto vertShaderCode = readfile("shaders/vert.spv");
@@ -865,7 +929,8 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
 		});
 
@@ -906,7 +971,8 @@ namespace vk_engine {
 
 		create_material(_graphicsPipeline, _pipelineLayout, "defaultMesh");
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
 		});
 
@@ -947,9 +1013,10 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_texturelesspipelineLayout));
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyPipelineLayout(_device, _texturelesspipelineLayout, nullptr);
-			});
+		});
 
 		VertexInputDescription description = Vertex::get_vertex_description();
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = vk_info::VertexInputStateCreateInfo(description.bindings, description.attributes);
@@ -988,15 +1055,17 @@ namespace vk_engine {
 
 		create_material(_texturelesPipeline, _texturelesspipelineLayout, "texturelessMesh");
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyPipeline(_device, _texturelesPipeline, nullptr);
-			});
+		});
 
 		vkDestroyShaderModule(_device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(_device, fragShaderModule, nullptr);
 	}
 
-	VkShaderModule vk_renderer::createShaderModule(const std::vector<char>& code) {
+	VkShaderModule vk_renderer::createShaderModule(const std::vector<char>& code)
+	{
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = code.size();
@@ -1012,8 +1081,10 @@ namespace vk_engine {
 		_swapChainFrameBuffers.resize(_swapChainImageViews.size());
 		VkFramebufferCreateInfo framebufferInfo = vk_info::FramebufferCreateInfo(_renderpass, _swapChainExtent);
 
-		for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
-			VkImageView attachments[] = {
+		for (size_t i = 0; i < _swapChainImageViews.size(); i++)
+		{
+			VkImageView attachments[] =
+			{
 				_swapChainImageViews[i],
 				_depthImageView
 			};
@@ -1021,22 +1092,26 @@ namespace vk_engine {
 			framebufferInfo.attachmentCount = 2;
 
 			VK_CHECK(vkCreateFramebuffer(_device, &framebufferInfo, nullptr, &_swapChainFrameBuffers[i]));
-			_deletionQueue.push_function([=](){
+			_deletionQueue.push_function([=]()
+			{
 				vkDestroyFramebuffer(_device, _swapChainFrameBuffers[i], nullptr);
 			});
 		}
 	}
 
-	void vk_renderer::createCommands() {
+	void vk_renderer::createCommands()
+	{
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		poolInfo.queueFamilyIndex = _indices.graphicFamily.value();
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // optional
 
-		for (auto& frame : _frames) {
+		for (auto& frame : _frames)
+		{
 			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._commandPool));
 
-			_deletionQueue.push_function([=]() {
+			_deletionQueue.push_function([=]()
+			{
 				vkDestroyCommandPool(_device, frame._commandPool, nullptr);
 			});
 
@@ -1051,12 +1126,14 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_uploadContext._commandPool));
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
 		});
 	}
 
-	void vk_renderer::createSyncObjects() {
+	void vk_renderer::createSyncObjects()
+	{
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -1064,11 +1141,13 @@ namespace vk_engine {
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (auto& frame : _frames) {
+		for (auto& frame : _frames)
+		{
 			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._imageAvailableSemaphore));
 			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._renderFinishedSemaphore));
 			VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &frame._inFlightFences));
-			_deletionQueue.push_function([=](){
+			_deletionQueue.push_function([=]()
+			{
 				vkDestroySemaphore(_device, frame._imageAvailableSemaphore, nullptr);
 				vkDestroySemaphore(_device, frame._renderFinishedSemaphore, nullptr);
 				vkDestroyFence(_device, frame._inFlightFences, nullptr);
@@ -1079,13 +1158,15 @@ namespace vk_engine {
 
 		VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_uploadContext._uploadFence));
 
-		_deletionQueue.push_function([=](){
+		_deletionQueue.push_function([=]()
+		{
 			vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
 		});
 	}
 
 	// cleanup memory after terminate the program
-	void vk_renderer::cleanup() {
+	void vk_renderer::cleanup()
+	{
 		_deletionQueue.flush();
 
 		glfwDestroyWindow(_window);
@@ -1093,7 +1174,8 @@ namespace vk_engine {
 		glfwTerminate();
 	}
 
-	AllocatedBuffer vk_renderer::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) {
+	AllocatedBuffer vk_renderer::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+	{
 		// allocate vertex buffer
 		VkBufferCreateInfo bufferinfo{};
 		bufferinfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1111,34 +1193,43 @@ namespace vk_engine {
 		return newbuffer;
 	}
 
-	size_t vk_renderer::pad_uniform_buffer_size(size_t originalSize) {
+	size_t vk_renderer::pad_uniform_buffer_size(size_t originalSize)
+	{
 		size_t minUboAlignment = _deviceProperties.limits.minUniformBufferOffsetAlignment;
 		size_t alignedSize = originalSize;
-		if (minUboAlignment > 0) {
+		if (minUboAlignment > 0)
+		{
 			alignedSize = (alignedSize + minUboAlignment - 1) & ~(minUboAlignment - 1);
 		}
 		return alignedSize;
 	}
 
-	Mesh* vk_renderer::get_mesh(const std::string& name) {
-		if (_meshes.find(name) != _meshes.end()) {
+	Mesh* vk_renderer::get_mesh(const std::string& name)
+	{
+		if (_meshes.find(name) != _meshes.end())
+		{
 			return &_meshes[name];
 		}
-		else {
+		else
+		{
 			return nullptr;
 		}
 	}
 
-	Material* vk_renderer::get_material(const std::string& name) {
-		if (_materials.find(name) != _materials.end()) {
+	Material* vk_renderer::get_material(const std::string& name)
+	{
+		if (_materials.find(name) != _materials.end())
+		{
 			return &_materials[name];
 		}
-		else {
+		else
+		{
 			return nullptr;
 		}
 	}
 
-	Material* vk_renderer::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name) {
+	Material* vk_renderer::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name)
+	{
 		Material mat;
 		mat.pipeline = pipeline;
 		mat.pipelineLayout = layout;
@@ -1146,17 +1237,21 @@ namespace vk_engine {
 		return &_materials[name];
 	}
 
-	void vk_renderer::load_meshes() {
-		auto worker1 = std::async(std::launch::async, [&]() {
+	void vk_renderer::load_meshes()
+	{
+		auto worker1 = std::async(std::launch::async, [&]()
+		{
 			Mesh::load_from_obj("assets/Interior/interior.asset", this);
 		});
 
-		auto worker2 = std::async(std::launch::async, [&]() {
+		auto worker2 = std::async(std::launch::async, [&]()
+		{
 			Mesh::load_from_obj("assets/Exterior/exterior.asset", this);
 		});
 	}
 
-	void vk_renderer::upload_mesh(Mesh& mesh) {
+	void vk_renderer::upload_mesh(Mesh& mesh)
+	{
 		const size_t bufferSize = mesh._vertices.size() * sizeof(Vertex);
 
 		// allocate Staging Buffer
@@ -1194,40 +1289,48 @@ namespace vk_engine {
 
 		VK_CHECK(vmaCreateBuffer(_allocator, &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr));
 
-		_deletionQueue.push_function([=]() {
+		_deletionQueue.push_function([=]()
+		{
 			vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
-			});
+		});
 
-		immediate_submit([=](VkCommandBuffer cmd) {
+		immediate_submit([=](VkCommandBuffer cmd)
+		{
 			VkBufferCopy copy;
 			copy.srcOffset = 0;
 			copy.dstOffset = 0;
 			copy.size = bufferSize;
 			vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1, &copy);
-			});
+		});
 
 		vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 	}
 
-	void vk_renderer::load_textures() {
-		for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("assets/San_Miguel/textures")) {
-			auto worker = std::async(std::launch::async, [&]() {
+	void vk_renderer::load_textures()
+	{
+		for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("assets/San_Miguel/textures"))
+		{
+			auto worker = std::async(std::launch::async, [&]()
+			{
 				Texture texture;
-				if (vk_util::load_image_from_file(this, dirEntry.path().string().c_str(), texture.Image)) {
+				if (vk_util::load_image_from_file(this, dirEntry.path().string().c_str(), texture.Image))
+				{
 					VkImageViewCreateInfo imageInfo = vk_info::ImageViewCreateInfo(texture.Image._image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 					VK_CHECK(vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView));
 
 					_textures[dirEntry.path().string()] = texture;
 
-					_deletionQueue.push_function([=]() {
+					_deletionQueue.push_function([=]()
+					{
 						vkDestroyImageView(_device, texture.imageView, nullptr);
-						});
+					});
 				}
 			});
 		};
 	}
 
-	void vk_renderer::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func) {
+	void vk_renderer::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func)
+	{
 		VkCommandBufferAllocateInfo cmdAllocInfo{};
 		cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		cmdAllocInfo.commandPool = _uploadContext._commandPool;
@@ -1260,7 +1363,8 @@ namespace vk_engine {
 		vkResetCommandPool(_device, _uploadContext._commandPool, NULL);
 	}
 
-	SwapChainSupportDetails vk_renderer::querySwapChainSupport(const VkPhysicalDevice& device) {
+	SwapChainSupportDetails vk_renderer::querySwapChainSupport(const VkPhysicalDevice& device)
+	{
 		SwapChainSupportDetails details;
 
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, _surface, &details.capabilities);
@@ -1268,7 +1372,8 @@ namespace vk_engine {
 		uint32_t formatCount;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, _surface, &formatCount, nullptr);
 
-		if (formatCount != 0) {
+		if (formatCount != 0)
+		{
 			details.formats.resize(formatCount);
 			vkGetPhysicalDeviceSurfaceFormatsKHR(device, _surface, &formatCount, details.formats.data());
 		}
@@ -1276,7 +1381,8 @@ namespace vk_engine {
 		uint32_t presentModeCount;
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, _surface, &presentModeCount, nullptr);
 
-		if (presentModeCount != 0) {
+		if (presentModeCount != 0)
+		{
 			details.presentModes.resize(presentModeCount);
 			vkGetPhysicalDeviceSurfacePresentModesKHR(device, _surface, &presentModeCount, details.presentModes.data());
 		}
@@ -1284,8 +1390,10 @@ namespace vk_engine {
 		return details;
 	}
 
-	VkSurfaceFormatKHR vk_renderer::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
-		for (const auto& availableFormat : availableFormats) {
+	VkSurfaceFormatKHR vk_renderer::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+	{
+		for (const auto& availableFormat : availableFormats)
+		{
 			if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				return availableFormat;
 			}
@@ -1293,24 +1401,31 @@ namespace vk_engine {
 		return availableFormats[0];
 	}
 
-	VkPresentModeKHR vk_renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
-		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) { // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
+	VkPresentModeKHR vk_renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+	{
+		for (const auto& availablePresentMode : availablePresentModes)
+		{
+			if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
+			{
 				return availablePresentMode;
 			}
 		}
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	VkExtent2D vk_renderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-		if (capabilities.currentExtent.width != UINT32_MAX) {
+	VkExtent2D vk_renderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+	{
+		if (capabilities.currentExtent.width != UINT32_MAX)
+		{
 			return capabilities.currentExtent;
 		}
-		else {
+		else
+		{
 			int width, height;
 			glfwGetFramebufferSize(_window, &width, &height);
 
-			VkExtent2D actualExtent = {
+			VkExtent2D actualExtent =
+			{
 				static_cast<uint32_t>(width),
 				static_cast<uint32_t>(height)
 			};
@@ -1322,7 +1437,8 @@ namespace vk_engine {
 		}
 	}
 
-	VKAPI_ATTR VkBool32 VKAPI_CALL vk_renderer::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+	VKAPI_ATTR VkBool32 VKAPI_CALL vk_renderer::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+	{
 		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
 		return VK_FALSE;

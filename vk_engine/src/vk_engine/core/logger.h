@@ -8,11 +8,14 @@
 #define VK_LOG_INFO(...)     vk_engine::logger::getCoreLogger()->info(__VA_ARGS__);
 #define VK_LOG_WARN(...)     vk_engine::logger::getCoreLogger()->warn(__VA_ARGS__);
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-    class logger {
+    class logger
+    {
     public:
-        static void init() {
+        static void init()
+        {
             _corelogger = spdlog::stdout_color_mt("core");
             // _clientlogger = spdlog::rotating_logger_mt("client", "logs", 1048576 * 5, 3);
         };

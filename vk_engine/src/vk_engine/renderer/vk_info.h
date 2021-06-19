@@ -1,9 +1,11 @@
 #pragma once
 #include "vk_engine/renderer/vk_type.h"
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	namespace vk_info {
+	namespace vk_info
+	{
 		VkDebugUtilsMessengerCreateInfoEXT DebugMessengerCreateInfo(PFN_vkDebugUtilsMessengerCallbackEXT debugCallback);
 
 		VkDeviceQueueCreateInfo DeviceQueueCreateInfo(uint32_t queueFamily, float& queuePriority);

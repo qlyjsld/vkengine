@@ -6,11 +6,14 @@
 
 using json = nlohmann::json;
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-    namespace assets {
+    namespace assets
+    {
 
-        bool saveAssetFile(const char* path, const assetFile& file) {
+        bool saveAssetFile(const char* path, const assetFile& file)
+        {
             std::ofstream binaryFile;
             binaryFile.open(path, std::ios::binary | std::ios::out);
 
@@ -31,11 +34,13 @@ namespace vk_engine {
             return true;
         }
 
-        bool loadAssetFile(const char* path, assetFile& file) {
+        bool loadAssetFile(const char* path, assetFile& file)
+        {
             std::ifstream binaryFile;
             binaryFile.open(path, std::ios::binary | std::ios::in);
 
-            if (binaryFile.is_open()) {
+            if (binaryFile.is_open())
+            {
                 binaryFile.read(file.type, 4);
 
                 binaryFile.read((char*) &file.version, sizeof(uint32_t));
@@ -55,12 +60,14 @@ namespace vk_engine {
 
                 return true;
             }
-            else {
+            else
+            {
                 return false;
             }
         }
 
-        textureInfo readTextureInfo(assetFile* file) {
+        textureInfo readTextureInfo(assetFile* file)
+        {
             textureInfo info;
 
             json textJson = json::parse(file->json);
@@ -73,11 +80,13 @@ namespace vk_engine {
             return info;
         }
 
-        void unpackTexture(textureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest) {
+        void unpackTexture(textureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
+        {
             LZ4_decompress_safe(sourcebuffer, dest, sourceSize, info->textureSize);
         }
 
-        assetFile packTexture(textureInfo* info, void* pixelData) {
+        assetFile packTexture(textureInfo* info, void* pixelData)
+        {
             assetFile file;
             file.type[0] = 'T';
             file.type[1] = 'E';
@@ -101,7 +110,8 @@ namespace vk_engine {
             return file;
         }
 
-        meshInfo readMeshInfo(assetFile* file) {
+        meshInfo readMeshInfo(assetFile* file)
+        {
             meshInfo info;
 
             json meshJson = json::parse(file->json);
@@ -112,11 +122,13 @@ namespace vk_engine {
             return info;
         }
 
-        void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest) {
+        void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
+        {
             LZ4_decompress_safe(sourcebuffer, dest, sourceSize, info->meshSize);
         }
 
-        assetFile packMesh(meshInfo* info, void* meshData) {
+        assetFile packMesh(meshInfo* info, void* meshData)
+        {
             assetFile file;
             file.type[0] = 'M';
             file.type[1] = 'E';

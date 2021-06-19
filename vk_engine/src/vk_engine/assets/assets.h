@@ -2,11 +2,14 @@
 #include <string>
 #include <vector>
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-    namespace assets {
+    namespace assets
+    {
 
-        struct assetFile {
+        struct assetFile
+        {
             char type[4]; // TEXT for texture, MESH for mesh
             uint32_t version;
             std::string json;
@@ -17,12 +20,14 @@ namespace vk_engine {
         bool loadAssetFile(const char* path, assetFile& file);
 
         // texture
-        enum class textureFormat : uint32_t {
+        enum class textureFormat : uint32_t
+        {
             UNDEFINED = 0,
             RGBA8 = 43
         };
 
-        struct textureInfo {
+        struct textureInfo
+        {
             uint64_t textureSize;
             textureFormat format;
             uint32_t width;
@@ -35,18 +40,21 @@ namespace vk_engine {
         assetFile packTexture(textureInfo* info, void* pixelData);
 
         // mesh
-        struct Vertex {
+        struct Vertex
+        {
             float position[3];
             float normal[3];
             float color[3];
             float uv[2];
         };
 
-        struct Mesh {
+        struct Mesh
+        {
             std::vector<Vertex> _vertices;
         };
 
-        struct meshInfo {
+        struct meshInfo
+        {
             uint32_t shapeSize;
             uint64_t meshSize;
         };
@@ -54,7 +62,6 @@ namespace vk_engine {
         meshInfo readMeshInfo(assetFile* file);
         void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
         assetFile packMesh(meshInfo* info, void* meshData);
-
     }
 
 }

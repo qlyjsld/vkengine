@@ -75,6 +75,7 @@ include_directories(
 	"vendors/tinyobjloader"
 	"vendors/lz4-1.9.3/lib"
 	"vendors/json"
+	"vendors/VirtuosoConsole"
 	${Vulkan_INCLUDE_DIRS}
 )
 

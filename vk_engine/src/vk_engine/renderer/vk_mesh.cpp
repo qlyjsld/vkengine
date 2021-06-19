@@ -6,9 +6,11 @@
 #include <future>
 #include <mutex>
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	VertexInputDescription Vertex::get_vertex_description() {
+	VertexInputDescription Vertex::get_vertex_description()
+	{
 		VertexInputDescription description;
 
 		// 1 vertex buffer binding
@@ -55,7 +57,8 @@ namespace vk_engine {
 		return description;
 	}
 
-	void Mesh::load_from_obj(const char* filename, vk_renderer* renderer) {
+	void Mesh::load_from_obj(const char* filename, vk_renderer* renderer)
+	{
 		assets::assetFile asset{};
 		assets::loadAssetFile(filename, asset);
 
@@ -104,11 +107,13 @@ namespace vk_engine {
 
 		vmaCreateBuffer(renderer->_allocator, &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr);
 
-		renderer->_deletionQueue.push_function([=]() {
+		renderer->_deletionQueue.push_function([=]()
+		{
 			vmaDestroyBuffer(renderer->_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
 		});
 
-		renderer->immediate_submit([=](VkCommandBuffer cmd) {
+		renderer->immediate_submit([=](VkCommandBuffer cmd)
+		{
 			VkBufferCopy copy;
 			copy.srcOffset = 0;
 			copy.dstOffset = 0;

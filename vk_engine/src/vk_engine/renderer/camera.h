@@ -2,12 +2,15 @@
 #include <glm/glm.hpp>
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	class Camera {
+	class Camera
+	{
 	public:
 		// constructor
-		Camera() {
+		Camera()
+		{
 			camPos = glm::vec3{ 0.0f, 0.0f, -5.0f };
 			camFront = glm::vec3(0.0f, 0.0f, 1.0f);
 			camUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -21,13 +24,15 @@ namespace vk_engine {
 		~Camera() {};
 
 		// copy constructor
-		Camera(const Camera& other) {
+		Camera(const Camera& other)
+		{
 			camPos = other.camPos;
 			camFront = other.camFront;
 			camUp = other.camUp;
 		}
 
-		Camera& operator=(const Camera& other) {
+		Camera& operator=(const Camera& other)
+		{
 			this->camPos = other.camPos;
 			this->camFront = other.camFront;
 			this->camUp = other.camUp;
@@ -35,13 +40,15 @@ namespace vk_engine {
 		}
 
 		// move constructor
-		Camera(Camera&& other) noexcept {
+		Camera(Camera&& other) noexcept
+		{
 			camPos = other.camPos;
 			camFront = other.camFront;
 			camUp = other.camUp;
 		}
 
-		Camera& operator=(Camera&& other) noexcept {
+		Camera& operator=(Camera&& other) noexcept
+		{
 			if (this != &other) {
 				this->camPos = other.camPos;
 				this->camFront = other.camFront;

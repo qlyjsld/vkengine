@@ -7,9 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	bool vk_util::load_image_from_file(vk_renderer* renderer, const char* file, AllocatedImage& outImage) {
+	bool vk_util::load_image_from_file(vk_renderer* renderer, const char* file, AllocatedImage& outImage)
+	{
 		assets::assetFile asset{};
 		assets::loadAssetFile(file, asset);
 
@@ -44,7 +46,8 @@ namespace vk_engine {
 
 		vmaCreateImage(renderer->_allocator, &imgInfo, &img_allocInfo, &newImage._image, &newImage._allocation, nullptr);
 
-		renderer->immediate_submit([&](VkCommandBuffer cmd) {
+		renderer->immediate_submit([&](VkCommandBuffer cmd)
+		{
 			VkImageSubresourceRange range{};
 			range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			range.baseMipLevel = 0;
@@ -82,11 +85,12 @@ namespace vk_engine {
 			imageBarrier_toReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier_toReadable);
-			});
+		});
 
-		renderer->_deletionQueue.push_function([=]() {
+		renderer->_deletionQueue.push_function([=]()
+		{
 			vmaDestroyImage(renderer->_allocator, newImage._image, newImage._allocation);
-			});
+		});
 
 		vmaDestroyBuffer(renderer->_allocator, stageingBuffer._buffer, stageingBuffer._allocation);
 

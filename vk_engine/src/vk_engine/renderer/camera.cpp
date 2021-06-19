@@ -2,11 +2,13 @@
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 
-namespace vk_engine {
+namespace vk_engine
+{
 
 	constexpr float camera_speed = 5.0f;
 
-	void Camera::updateCameraFront(double mouse_xpos, double mouse_ypos) {
+	void Camera::updateCameraFront(double mouse_xpos, double mouse_ypos)
+	{
 		float xoffset = (mouse_xpos - lastMouseXpos) * 0.1f;
 		float yoffset = (lastMouseYpos - mouse_ypos) * 0.1f;
 
@@ -23,7 +25,8 @@ namespace vk_engine {
 		lastMouseYpos = mouse_ypos;
 	}
 
-	void  Camera::updateCameraPos(char&& key, float frametime) {
+	void  Camera::updateCameraPos(char&& key, float frametime)
+	{
 		switch (key) {
 		case 'w':
 			camPos += camFront * frametime * camera_speed;
@@ -42,11 +45,13 @@ namespace vk_engine {
 		}
 	}
 
-	glm::mat4 Camera::getViewMatrix() {
+	glm::mat4 Camera::getViewMatrix()
+	{
 		return glm::lookAt(camPos, camPos + camFront, camUp);
 	}
 
-	glm::mat4 Camera::getProjectionMatrix(float width, float height) {
+	glm::mat4 Camera::getProjectionMatrix(float width, float height)
+	{
 		auto projection = glm::perspective(glm::radians(90.0f), width / height, 0.1f, 2000.0f);
 		projection[1][1] *= -1;
 		return projection;

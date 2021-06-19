@@ -1,10 +1,12 @@
 #pragma once
 #include "vk_engine/renderer/vk_type.h"
 
-namespace vk_engine {
+namespace vk_engine
+{
 
 	// Supports / Extensions related
-	namespace vk_support {
+	namespace vk_support
+	{
 		std::vector<const char*> getRequiredExtension(bool enableValidationLayers);
 
 		bool checkValidationLayerSupport();

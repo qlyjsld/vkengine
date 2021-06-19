@@ -9,9 +9,11 @@
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
-namespace vk_engine {
+namespace vk_engine
+{
 
-	class PipelineBuilder {
+	class PipelineBuilder
+	{
 	public:
 		VkPipelineShaderStageCreateInfo* _shaderStages;
 		VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
@@ -28,28 +30,33 @@ namespace vk_engine {
 		VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 	};
 
-	struct DeletionQueue {
+	struct DeletionQueue
+	{
 		std::deque<std::function<void()>> deletors;
 
-		void push_function(std::function<void()>&& func) {
+		void push_function(std::function<void()>&& func)
+		{
 			deletors.push_back(func);
 		}
 
 		void flush() {
-			for (auto it = deletors.end() - 1; it > deletors.begin(); it--) {
+			for (auto it = deletors.end() - 1; it > deletors.begin(); it--)
+			{
 				(*it)(); // call function
 			}
 			deletors.clear();
 		}
 	};
 
-	struct GPUCameraData {
+	struct GPUCameraData
+	{
 		glm::mat4 view;
 		glm::mat4 projection;
 		glm::mat4 viewproj;
 	};
 
-	struct GPUSceneData {
+	struct GPUSceneData
+	{
 		glm::vec4 fogColor; // w is for exponent
 		glm::vec4 fogDistances; // x for min, y for max, zw unused
 		glm::vec4 ambientColor;
@@ -57,11 +64,13 @@ namespace vk_engine {
 		glm::vec4 sunlightColor;
 	};
 
-	struct GPUObjectData {
+	struct GPUObjectData
+	{
 		glm::mat4 modelMatrix;
 	};
 
-	struct FrameData {
+	struct FrameData
+	{
 		VkCommandPool _commandPool;
 		VkCommandBuffer _maincommandBuffer;
 
@@ -73,30 +82,35 @@ namespace vk_engine {
 		VkDescriptorSet _objectDescriptor;
 	};
 
-	struct Material {
+	struct Material
+	{
 		VkDescriptorSet textureSet{ VK_NULL_HANDLE };
 
 		VkPipeline pipeline;
 		VkPipelineLayout pipelineLayout;
 	};
 
-	struct RenderObject {
+	struct RenderObject
+	{
 		Mesh* mesh;
 		Material* material;
 		glm::mat4 transformMatrix;
 	};
 
-	struct Texture {
+	struct Texture
+	{
 		AllocatedImage Image;
 		VkImageView imageView;
 	};
 
-	struct UploadContext {
+	struct UploadContext
+	{
 		VkFence _uploadFence;
 		VkCommandPool _commandPool;
 	};
 
-	struct IndirectBatch {
+	struct IndirectBatch
+	{
 		Mesh* mesh;
 		Material* material;
 		uint32_t first;
@@ -104,7 +118,8 @@ namespace vk_engine {
 	};
 
 	// vk_engine is a Vulkan rendering engine
-	class vk_renderer {
+	class vk_renderer
+	{
 	public:
 		// default camera
 		struct Camera* _camera{ nullptr };
