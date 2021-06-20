@@ -118,9 +118,32 @@ namespace vk_engine
 	};
 
 	// vk_engine is a Vulkan rendering engine
-	class vk_renderer
+	class Renderer
 	{
 	public:
+
+		Renderer()
+		{
+			Init();
+
+			_Device = new DeviceHandler();
+			_Present = new PresentHandler();
+			_Pipeline = new PipelineHandler();
+
+			_Device->init();
+			_Present->init();
+			_Pipeline->init();
+		}
+
+		DeviceHandler* _Device;
+		PresentHandler* _Present;
+		PipelineHandler* _Pipeline;
+
+		VkInstance _Instance;
+		VkDebugUtilsMessengerEXT _DebugMessager;
+
+		void Init();
+
 		// default camera
 		struct Camera* _camera{ nullptr };
 

@@ -437,7 +437,7 @@ namespace vk_engine
 		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr); */
 	}
 
-	void vk_renderer::createInstance()
+	void Renderer::Init()
 	{
 		// check validation layers availability
 		if (enableValidationLayers && !vk_support::checkValidationLayerSupport())
