@@ -1,17 +1,16 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "vk_engine.h"
+#include "VkEngine.h"
 #include "QuakeStyleConsole.h"
 
 int main()
 {
 	// Virtuoso::QuakeStyleConsole console;
-	vk_engine::vk_renderer engine{};
 
 	try
 	{
-		engine.run();
+		VkEngine::Renderer engine{};
 	}
 	catch (const std::exception& e)
 	{
