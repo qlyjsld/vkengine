@@ -1,16 +1,16 @@
-#include "vk_engine/renderer/camera.h"
+#include "VkEngine/Renderer/Camera.h"
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 
-namespace vk_engine
+namespace VkEngine
 {
 
-	constexpr float camera_speed = 5.0f;
+	constexpr float cameraSpeed = 5.0f;
 
-	void Camera::updateCameraFront(double mouse_xpos, double mouse_ypos)
+	void Camera::updateCameraFront(double mouseXpos, double mouseYpos)
 	{
-		float xoffset = (mouse_xpos - lastMouseXpos) * 0.1f;
-		float yoffset = (lastMouseYpos - mouse_ypos) * 0.1f;
+		float xoffset = (mouseXpos - lastMouseXpos) * 0.1f;
+		float yoffset = (lastMouseYpos - mouseYpos) * 0.1f;
 
 		yaw += xoffset;
 		pitch += yoffset;
@@ -21,24 +21,24 @@ namespace vk_engine
 
 		camFront = glm::normalize(camFront);
 
-		lastMouseXpos = mouse_xpos;
-		lastMouseYpos = mouse_ypos;
+		lastMouseXpos = mouseXpos;
+		lastMouseYpos = mouseYpos;
 	}
 
 	void  Camera::updateCameraPos(char&& key, float frametime)
 	{
 		switch (key) {
 		case 'w':
-			camPos += camFront * frametime * camera_speed;
+			camPos += camFront * frametime * cameraSpeed;
 			break;
 		case 'a':
-			camPos -= glm::cross(camFront, camUp) * frametime * camera_speed;
+			camPos -= glm::cross(camFront, camUp) * frametime * cameraSpeed;
 			break;
 		case 's':
-			camPos -= camFront * frametime * camera_speed;
+			camPos -= camFront * frametime * cameraSpeed;
 			break;
 		case 'd':
-			camPos += glm::cross(camFront, camUp) * frametime * camera_speed;
+			camPos += glm::cross(camFront, camUp) * frametime * cameraSpeed;
 			break;
 		default:
 			break;
@@ -56,5 +56,4 @@ namespace vk_engine
 		projection[1][1] *= -1;
 		return projection;
 	}
-
 }

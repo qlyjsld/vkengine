@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VkEngine/Renderer/DeletionQueue.h"
+
 namespace VkEngine
 {
 
@@ -7,15 +9,19 @@ namespace VkEngine
 	{
 	public:
 
-		SurfaceHandler()
+		SurfaceHandler(VkInstance instance)
 		{
-			init();
+			init(instance);
 		}
 
 		~SurfaceHandler()
 		{
 			release();
 		};
+
+		struct GLFWwindow* _window{ nullptr };
+
+		VkSurfaceKHR _surface;
 
 		DeletionQueue _deletionQueue;
 

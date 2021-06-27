@@ -1,15 +1,15 @@
-#include "vk_engine/renderer/vk_mesh.h"
-#include "vk_engine/assets/assets.h"
-#include "vk_engine/renderer/vk_renderer.h"
+#include "VkEngine/Renderer/Mesh.h"
+#include "VkEngine/Asset/Asset.h"
+#include "VkEngine/Renderer/Renderer.h"
 
 #include <iostream>
 #include <future>
 #include <mutex>
 
-namespace vk_engine
+namespace VkEngine
 {
 
-	VertexInputDescription Vertex::get_vertex_description()
+	VertexInputDescription Vertex::getVertexDescription()
 	{
 		VertexInputDescription description;
 
@@ -57,7 +57,7 @@ namespace vk_engine
 		return description;
 	}
 
-	void Mesh::load_from_obj(const char* filename, vk_renderer* renderer)
+	void Mesh::loadFromObj(const char* filename, vk_renderer* renderer)
 	{
 		assets::assetFile asset{};
 		assets::loadAssetFile(filename, asset);
@@ -127,5 +127,4 @@ namespace vk_engine
 
 		std::cout << "finished loading: " << filename << std::endl;
 	}
-
 }

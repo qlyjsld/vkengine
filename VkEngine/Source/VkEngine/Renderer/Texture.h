@@ -1,14 +1,14 @@
 #pragma once
 
-#include "vk_engine/renderer/vk_type.h"
-#include "vk_engine/renderer/vk_renderer.h"
+#include "VkEngine/Renderer/vk_type.h"
+#include "VkEngine/Renderer/Renderer.h"
 
-namespace vk_engine
+namespace VkEngine
 {
 
-	namespace vk_util
+	namespace VkUtil
 	{
-		bool load_image_from_file(vk_engine::vk_renderer* renderer, const char* file, AllocatedImage& outImage);
-	}
 
+		bool loadImageFromFile(VkEngine::Renderer* renderer, const char* file, AllocatedImage& outImage);
+	}
 }

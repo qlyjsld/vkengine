@@ -7,15 +7,15 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-namespace vk_engine
+namespace VkEngine
 {
 
-	bool vk_util::load_image_from_file(vk_renderer* renderer, const char* file, AllocatedImage& outImage)
+	bool VkUtil::loadImageFromFile(vk_renderer* renderer, const char* file, AllocatedImage& outImage)
 	{
-		assets::assetFile asset{};
-		assets::loadAssetFile(file, asset);
+		Asset::assetFile asset{};
+		Asset::loadAssetFile(file, asset);
 
-		assets::textureInfo textInfo = assets::readTextureInfo(&asset);
+		Asset::textureInfo textInfo = Asset::readTextureInfo(&asset);
 
 		VkFormat image_format = (VkFormat) textInfo.format;
 
@@ -28,7 +28,7 @@ namespace vk_engine
 		std::cout << "compressed size: " << asset.binaryBlob.size() << std::endl;
 		std::cout << "dest size: " << textInfo.textureSize << std::endl;
 
-		assets::unpackTexture(&textInfo, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
+		Asset::unpackTexture(&textInfo, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
 
 		vmaUnmapMemory(renderer->_allocator, stageingBuffer._allocation);
 

@@ -1,4 +1,4 @@
-#include "vk_engine/assets/assets.h"
+#include "VkEngine/Asset/Asset.h"
 #include "json.hpp"
 #include "lz4.h"
 #include <fstream>
@@ -6,13 +6,13 @@
 
 using json = nlohmann::json;
 
-namespace vk_engine
+namespace VkEngine
 {
 
-    namespace assets
+    namespace Asset
     {
 
-        bool saveAssetFile(const char* path, const assetFile& file)
+        bool saveAssetFile(const char* path, const AssetFile& file)
         {
             std::ofstream binaryFile;
             binaryFile.open(path, std::ios::binary | std::ios::out);
@@ -34,7 +34,7 @@ namespace vk_engine
             return true;
         }
 
-        bool loadAssetFile(const char* path, assetFile& file)
+        bool loadAssetFile(const char* path, AssetFile& file)
         {
             std::ifstream binaryFile;
             binaryFile.open(path, std::ios::binary | std::ios::in);
@@ -66,9 +66,9 @@ namespace vk_engine
             }
         }
 
-        textureInfo readTextureInfo(assetFile* file)
+        TextureInfo readTextureInfo(AssetFile* file)
         {
-            textureInfo info;
+            TextureInfo info;
 
             json textJson = json::parse(file->json);
             
@@ -80,14 +80,14 @@ namespace vk_engine
             return info;
         }
 
-        void unpackTexture(textureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
+        void unpackTexture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
         {
             LZ4_decompress_safe(sourcebuffer, dest, sourceSize, info->textureSize);
         }
 
-        assetFile packTexture(textureInfo* info, void* pixelData)
+        AssetFile packTexture(TextureInfo* info, void* pixelData)
         {
-            assetFile file;
+            AssetFile file;
             file.type[0] = 'T';
             file.type[1] = 'E';
             file.type[2] = 'X';
@@ -98,7 +98,7 @@ namespace vk_engine
             textJson["width"] = info->width;
             textJson["height"] = info->height;
             textJson["textureSize"] = info->textureSize;
-            textJson["format"] = textureFormat::RGBA8;
+            textJson["format"] = TextureFormat::RGBA8;
             file.json = textJson.dump();
 
             // compress buffer into blob
@@ -110,9 +110,9 @@ namespace vk_engine
             return file;
         }
 
-        meshInfo readMeshInfo(assetFile* file)
+        MeshInfo readMeshInfo(AssetFile* file)
         {
-            meshInfo info;
+            MeshInfo info;
 
             json meshJson = json::parse(file->json);
 
@@ -122,14 +122,14 @@ namespace vk_engine
             return info;
         }
 
-        void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
+        void unpackMesh(MeshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest)
         {
             LZ4_decompress_safe(sourcebuffer, dest, sourceSize, info->meshSize);
         }
 
-        assetFile packMesh(meshInfo* info, void* meshData)
+        AssetFile packMesh(MeshInfo* info, void* meshData)
         {
-            assetFile file;
+            AssetFile file;
             file.type[0] = 'M';
             file.type[1] = 'E';
             file.type[2] = 'S';

@@ -1,14 +1,15 @@
 #pragma once
+
 #include <string>
 #include <vector>
 
-namespace vk_engine
+namespace VkEngine
 {
 
-    namespace assets
+    namespace Asset
     {
 
-        struct assetFile
+        struct AssetFile
         {
             char type[4]; // TEXT for texture, MESH for mesh
             uint32_t version;
@@ -16,28 +17,28 @@ namespace vk_engine
             std::vector<char> binaryBlob;
         };
 
-        bool saveAssetFile(const char* path, const assetFile& file);
-        bool loadAssetFile(const char* path, assetFile& file);
+        bool saveAssetFile(const char* path, const AssetFile& file);
+        bool loadAssetFile(const char* path, AssetFile& file);
 
         // texture
-        enum class textureFormat : uint32_t
+        enum class TextureFormat : uint32_t
         {
             UNDEFINED = 0,
             RGBA8 = 43
         };
 
-        struct textureInfo
+        struct TextureInfo
         {
             uint64_t textureSize;
-            textureFormat format;
+            TextureFormat format;
             uint32_t width;
             uint32_t height;
         };
 
         // textureFormat parseFormat(const char* c);
-        textureInfo readTextureInfo(assetFile* file);
-        void unpackTexture(textureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
-        assetFile packTexture(textureInfo* info, void* pixelData);
+        TextureInfo readTextureInfo(AssetFile* file);
+        void unpackTexture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
+        AssetFile packTexture(TextureInfo* info, void* pixelData);
 
         // mesh
         struct Vertex
@@ -53,15 +54,15 @@ namespace vk_engine
             std::vector<Vertex> _vertices;
         };
 
-        struct meshInfo
+        struct MeshInfo
         {
             uint32_t shapeSize;
             uint64_t meshSize;
         };
 
-        meshInfo readMeshInfo(assetFile* file);
-        void unpackMesh(meshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
-        assetFile packMesh(meshInfo* info, void* meshData);
+        MeshInfo readMeshInfo(AssetFile* file);
+        void unpackMesh(MeshInfo* info, const char* sourcebuffer, size_t sourceSize, char* dest);
+        AssetFile packMesh(MeshInfo* info, void* meshData);
     }
 
 }

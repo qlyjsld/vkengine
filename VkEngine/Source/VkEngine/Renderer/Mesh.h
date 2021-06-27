@@ -1,5 +1,6 @@
 #pragma once
-#include "vk_engine/renderer/vk_type.h"
+
+#include "VkEngine/Renderer/vk_type.h"
 // #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
@@ -7,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace vk_engine
+namespace VkEngine
 {
 
 	struct VertexInputDescription
@@ -25,7 +26,7 @@ namespace vk_engine
 		glm::vec3 color;
 		glm::vec2 uv;
 
-		static VertexInputDescription get_vertex_description();
+		static VertexInputDescription getVertexDescription();
 	};
 
 	struct Mesh
@@ -34,7 +35,7 @@ namespace vk_engine
 		// glm::mat4 transformMatrix;
 
 		AllocatedBuffer _vertexBuffer;
-		static void load_from_obj(const char* filename, struct vk_renderer* renderer);
+		static void loadFromObj(const char* filename, struct Renderer* renderer);
 	};
 
 }

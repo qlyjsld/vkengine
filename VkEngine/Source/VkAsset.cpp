@@ -1,6 +1,6 @@
 #include <string>
 #include <iostream>
-#include "vk_engine/assets/assets.h"
+#include "VkEngine/Asset/Asset.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -64,8 +64,8 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    vk_engine::assets::Mesh meshes;
-    vk_engine::assets::meshInfo info{};
+    VkEngine::Asset::Mesh meshes;
+    VkEngine::Asset::MeshInfo info{};
 
     std::cout << "shapeSize: " << shapes.size() << std::endl;
 
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
                 float ny = attrib.normals[3 * idx.normal_index + 1];
                 float nz = attrib.normals[3 * idx.normal_index + 2];
 
-                vk_engine::assets::Vertex vertex;
+                VkEngine::Asset::Vertex vertex;
                 vertex.position[0] = vx;
                 vertex.position[1] = vy;
                 vertex.position[2] = vz;
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
     std::cout << "packing meshes..." << std::endl;
 
     void* meshPtr = meshes._vertices.data();
-    vk_engine::assets::assetFile file = vk_engine::assets::packMesh(&info, meshPtr);
+    VkEngine::Asset::AssetFile file = VkEngine::Asset::packMesh(&info, meshPtr);
 
     std::cout << "packed mesh" << std::endl;
 
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
 
     std::cout << "saving..." << std::endl;
 
-    vk_engine::assets::saveAssetFile((filePath.substr(0, filePath.size() - 4) + ".asset").c_str(), file);
+    VkEngine::Asset::saveAssetFile((filePath.substr(0, filePath.size() - 4) + ".asset").c_str(), file);
 
     return 0;
 }

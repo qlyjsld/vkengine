@@ -1,13 +1,15 @@
 #pragma once
+
 #include <glm/glm.hpp>
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace vk_engine
+namespace VkEngine
 {
 
 	class Camera
 	{
 	public:
+
 		// constructor
 		Camera()
 		{
@@ -73,5 +75,4 @@ namespace vk_engine
 		glm::mat4 getViewMatrix();
 		glm::mat4 getProjectionMatrix(float width, float height);
 	};
-
 }
