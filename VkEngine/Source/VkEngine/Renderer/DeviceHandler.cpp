@@ -1,4 +1,5 @@
 #include "VkEngine/Renderer/DeviceHandler.h"
+#include "VkEngine/Renderer/DeletionQueue.h"
 
 #include <stdexcept>
 
@@ -34,40 +35,81 @@ namespace VkEngine
 			throw std::runtime_error("no physical device available!");
 		}
 
-		// create logical device
-		_indices = vk_support::findQueueFamilies(_physicalDevice, _surface);
+		// logic to find graphics queue family
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
-		std::set<uint32_t> uniqueQueueFamilies = { _indices.graphicFamily.value(), _indices.presentFamily.value() };
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-		float queuePriority = 1.0f;
-		for (uint32_t queueFamily : uniqueQueueFamilies)
-		{
-			VkDeviceQueueCreateInfo queueCreateInfo = vk_info::DeviceQueueCreateInfo(queueFamily, queuePriority);
-			queueCreateInfos.push_back(queueCreateInfo);
-		}
+        uint32_t i = 0;
+        VkBool32 presentSupport = VK_FALSE;
+        for (const auto& queueFamily : queueFamilies)
+        {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            {
+                _indices.graphicFamily = i;
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
-		VkPhysicalDeviceFeatures deviceFeatures{};
+                if (presentSupport) {
+                    _indices.presentFamily = i;
+                }
+            }
+            i++;
 
-		VkDeviceCreateInfo deviceCreateInfo = vk_info::DeviceCreateInfo(queueCreateInfos, deviceFeatures, deviceExtensions);
+            if (_indices.isComplete())
+            {
+                break;
+            }
+        }
 
-		VkPhysicalDeviceShaderDrawParametersFeatures deviceDrawParametersInfo{};
-		deviceDrawParametersInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-		deviceDrawParametersInfo.pNext = nullptr;
-		deviceDrawParametersInfo.shaderDrawParameters = VK_TRUE;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+        std::set<uint32_t> uniqueQueueFamilies = { _indices.graphicFamily.value(), _indices.presentFamily.value() };
 
-		deviceCreateInfo.pNext = &deviceDrawParametersInfo;
+        float queuePriority = 1.0f;
+        for (uint32_t queueFamily : uniqueQueueFamilies)
+        {
+            VkDeviceQueueCreateInfo queueCreateInfo{};
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = queueFamily;
+            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.pQueuePriorities = &queuePriority;
 
-		VK_CHECK(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
 
-		_deletionQueue.push_function([=]()
-			{
-				vkDestroyDevice(_device, nullptr);
-			});
+        VkPhysicalDeviceFeatures deviceFeatures{};
+
+		VkDeviceCreateInfo deviceCreateInfo{};
+		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+		deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+
+		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+		deviceCreateInfo.enabledLayerCount = 0;
+
+        VkPhysicalDeviceShaderDrawParametersFeatures deviceDrawParametersInfo{};
+        deviceDrawParametersInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+        deviceDrawParametersInfo.pNext = nullptr;
+        deviceDrawParametersInfo.shaderDrawParameters = VK_TRUE;
+
+        deviceCreateInfo.pNext = &deviceDrawParametersInfo;
+
+        VK_CHECK(vkCreateDevice(_physicalDevice, &deviceCreateInfo, nullptr, &_device));
+
+        DeletionQueue::push_function([=]()
+        {
+            vkDestroyDevice(_device, nullptr);
+        });
 	}
 
 	void DeviceHandler::release()
 	{
-		_deletionQueue.flush();
+        // do nothing
 	}
 }

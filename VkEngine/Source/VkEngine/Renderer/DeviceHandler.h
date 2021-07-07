@@ -1,10 +1,21 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include <optional>
 
 namespace VkEngine
 {
+
+	struct QueueFamilyIndices
+	{
+		std::optional<uint32_t> graphicFamily;
+		std::optional<uint32_t> presentFamily;
+
+		bool isComplete()
+		{
+			return graphicFamily.has_value() && presentFamily.has_value();
+		}
+	};
 
 	class DeviceHandler
 	{
@@ -24,7 +35,12 @@ namespace VkEngine
 		VkPhysicalDevice _physicalDevice;
 		VkPhysicalDeviceProperties _deviceProperties;
 
-		DeletionQueue _deletionQueue;
+		QueueFamilyIndices _indices;
+
+		inline VkDevice getDevice() { return _device; };
+		inline VkPhysicalDevice getPhysicalDevice() { return _physicalDevice; };
+
+		inline QueueFamilyIndices getIndices() { return _indices; };
 
 		void init(VkInstance intance);
 		void release();

@@ -1,4 +1,5 @@
 #include "VkEngine/Renderer/SurfaceHandler.h"
+#include "VkEngine/Renderer/DeletionQueue.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -22,7 +23,7 @@ namespace VkEngine
         //create surface
 		VK_CHECK(glfwCreateWindowSurface(instance, _window, nullptr, &_surface));
 
-		_deletionQueue.push_function([=]()
+		DeletionQueue::push_function([=]()
 		{
 			vkDestroySurfaceKHR(_instance, _surface, nullptr);
 		});
@@ -30,8 +31,6 @@ namespace VkEngine
 
     void SurfaceHandler::release()
     {
-        _deletionQueue.flush();
-
         glfwDestroyWindow(_window);
     }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include <vulkan/vulkan.h>
 
 namespace VkEngine
 {
@@ -23,7 +23,7 @@ namespace VkEngine
 
 		VkSurfaceKHR _surface;
 
-		DeletionQueue _deletionQueue;
+		inline VkSurfaceKHR getSurface() { return _surface; };
 
 		void init();
 		void release();

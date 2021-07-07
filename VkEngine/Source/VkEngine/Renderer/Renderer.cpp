@@ -1,4 +1,5 @@
 #include "VkEngine/Renderer/Renderer.h"
+#include "VkEngine/Renderer/DeletionQueue.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -113,9 +114,9 @@ namespace VkEngine
 		// create the _instance
 		VK_CHECK(vkCreateInstance(&createInfo, nullptr, &_instance));
 
-		_deletionQueue.push_function([=]()
+		DeletionQueue::push_function([=]()
 		{
-				vkDestroyInstance(_instance, nullptr);
+			vkDestroyInstance(_instance, nullptr);
 		});
 
 		// setup debug messenger
@@ -133,7 +134,7 @@ namespace VkEngine
 
 			auto destroyDebugUtilsMessengerfunc = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(_instance, "vkDestroyDebugUtilsMessengerEXT");
 
-			_deletionQueue.push_function([=]()
+			DeletionQueue::push_function([=]()
 			{
 				destroyDebugUtilsMessengerfunc(_instance, _debugMessager, nullptr);
 			});
@@ -142,7 +143,7 @@ namespace VkEngine
 
 	void Renderer::release()
 	{
-		_deletionQueue.flush();
+		DeletionQueue::flush();
 
 		if (_device != nullptr)
 		{

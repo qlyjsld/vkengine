@@ -7,7 +7,6 @@
 #include "VkEngine/Renderer/BufferHandler.h"
 #include "VkEngine/Renderer/PresentHandler.h"
 #include "VkEngine/Renderer/PipelineHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
 
 namespace VkEngine
 {
@@ -23,8 +22,8 @@ namespace VkEngine
 
 			_deviceHandle = new DeviceHandler(_instance);
 			_surfaceHandle = new SurfaceHandler(_instance);
-			_bufferHandle = new BufferHandler();
-			_presentHandle = new PresentHandler();
+			_bufferHandle = new BufferHandler(_instance, _deviceHandle);
+			_presentHandle = new PresentHandler(_deviceHandle, _surfaceHandle);
 			_pipelineHandle = new PipelineHandler();
 		}
 
@@ -41,8 +40,6 @@ namespace VkEngine
 
 		VkInstance _instance;
 		VkDebugUtilsMessengerEXT _debugMessager;
-
-		DeletionQueue _deletionQueue;
 
 		void init();
 		void release();

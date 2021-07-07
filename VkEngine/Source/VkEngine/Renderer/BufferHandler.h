@@ -2,18 +2,33 @@
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+
+#include "VkEngine/Renderer/DeviceHandler.h"
 
 namespace VkEngine
 {
+    typedef BufferID size_t;
+    typedef ImageID size_t;
+
+    struct AllocatedBuffer
+    {
+        VkBuffer _buffer;
+		VmaAllocation _allocation;
+    };
+
+    struct AllocatedImage
+    {
+        VkImage _image;
+		VmaAllocation _allocation;
+    };
 
     class BufferHandler
     {
     public:
 
-        BufferHandler()
+        BufferHandler(VkInstance instance, DeviceHandler* deviceHandle)
         {
-            init();
+            init(instance, deviceHandle);
         }
 
         ~BufferHandler()
@@ -23,9 +38,16 @@ namespace VkEngine
 
         VmaAllocator _allocator;
 
-        DeletionQueue _deletionQueue;
+        std::vector<AllocatedBuffer> _allocatedBuffers;
+        std::vector<AllocatedImage> _allocatedImages;
 
-        void init();
+        BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+        BufferID createImage();
+
+        AllocatedBuffer& getBuffer(BufferID bufferId);
+        AllocatedImage& getImage(ImageID imageId);
+
+        void init(VkInstance instance, DeviceHandler* deviceHandle);
         void release();
     };
 }

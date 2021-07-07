@@ -1,6 +1,10 @@
 #pragma once
 
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
+#include "VkEngine/Renderer/SurfaceHandler.h"
+#include "VkEngine/Renderer/SwapChainHandler.h"
+#include "VkEngine/Renderer/DescriptorHandler.h"
+#include "VkEngine/Renderer/RenderPassHandler.h"
 
 namespace VkEngine
 {
@@ -9,9 +13,13 @@ namespace VkEngine
 	{
 	public:
 
-		PresentHandler()
+		PresentHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle;)
 		{
 			init();
+
+			_swapChainHandle = new SwapChainHandler(deviceHandle, surfaceHandle);
+			_descriptorHandle = new DescriptorHandler();
+			_renderPassHandle = new RenderPassHandler();
 		}
 
 		~PresentHandler()
@@ -19,19 +27,9 @@ namespace VkEngine
 			release();
 		};
 
-		std::optional<uint32_t> graphicFamilyIndex;
-		std::optional<uint32_t> presentFamilyIndex;
-
-		VkQueue _graphicsQueue;
-		VkQueue _presentQueue;
-
-		VkSwapchainKHR _swapChain;
-		std::vector<VkImage> _swapChainImages;
-		VkFormat _swapChainImageFormat;
-		VkExtent2D _swapChainExtent;
-		std::vector<VkImageView> _swapChainImageViews;
-
-		DeletionQueue _deletionQueue;
+		SwapChainHandler* _swapChainHandle;
+		DescriptorHandler* _descriptorHandle;
+		RenderPassHandler* _renderPassHandle;
 
 		void init();
 		void release();
