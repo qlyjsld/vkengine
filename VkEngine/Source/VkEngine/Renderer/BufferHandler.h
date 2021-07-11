@@ -36,18 +36,18 @@ namespace VkEngine
             release();
         }
 
-        VmaAllocator _allocator;
+        static VmaAllocator _allocator;
 
-        std::vector<AllocatedBuffer> _allocatedBuffers;
-        std::vector<AllocatedImage> _allocatedImages;
+        static std::vector<AllocatedBuffer> _allocatedBuffers;
+        static std::vector<AllocatedImage> _allocatedImages;
 
-        BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
-        BufferID createImage();
+        static BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+        static BufferID createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags imageUsage, VmaMemoryUsage memoryUsage);
 
-        AllocatedBuffer& getBuffer(BufferID bufferId);
-        AllocatedImage& getImage(ImageID imageId);
+        static AllocatedBuffer& getBuffer(BufferID bufferId);
+        static AllocatedImage& getImage(ImageID imageId);
 
-        void init(VkInstance instance, DeviceHandler* deviceHandle);
-        void release();
+        static void init(VkInstance instance, DeviceHandler* deviceHandle);
+        static void release();
     };
 }

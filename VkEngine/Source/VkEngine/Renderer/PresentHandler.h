@@ -13,12 +13,12 @@ namespace VkEngine
 	{
 	public:
 
-		PresentHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle;)
+		PresentHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle)
 		{
 			init();
 
 			_swapChainHandle = new SwapChainHandler(deviceHandle, surfaceHandle);
-			_descriptorHandle = new DescriptorHandler();
+			_descriptorHandle = new DescriptorHandler(deviceHandle);
 			_renderPassHandle = new RenderPassHandler();
 		}
 

@@ -107,30 +107,8 @@ namespace VkEngine
                 1
             };
 
-            // the depth image will be an image with the format we selected and Depth Attachment usage flag
-            VkImageCreateInfo depthImageCreateInfo{};
-            depthImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            depthImageCreateInfo.pNext = nullptr;
-
-            depthImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-            depthImageCreateInfo.format = VK_FORMAT_D32_SFLOAT;
-            depthImageCreateInfo.extent = depthImageExtent;
-
-            depthImageCreateInfo.mipLevels = 1;
-            depthImageCreateInfo.arrayLayers = 1;
-            depthImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-            depthImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-            depthImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-
-
-            // for the depth image, we want to allocate it from GPU local memory
-            VmaAllocationCreateInfo depthImageAllocInfo{};
-            depthImageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-            depthImageAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            // allocate and create the image
-            vmaCreateImage(_allocator, &depthImageCreateInfo, &depthImageAllocInfo, &_depthImage._image, &_depthImage._allocation, nullptr);
+            // create the depth image
+            _depthImage = BufferHandler::createImage(VK_FORMAT_D32_SFLOAT, depthImageExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
             DeletionQueue::push_function([=]()
             {
@@ -138,9 +116,26 @@ namespace VkEngine
             });
 
             // build an image-view for the depth image to use for rendering
-            VkImageViewCreateInfo dview_info = vk_info::ImageViewCreateInfo(_depthImage._image, _depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+            VkImageViewCreateInfo depthImageViewcreateInfo{};
+            depthImageViewcreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            depthImageViewcreateInfo.pNext = nullptr;
+            depthImageViewcreateInfo.image = BufferHandler::getImage(_depthimage);
 
-            VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
+            depthImageViewcreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            depthImageViewcreateInfo.format = VK_FORMAT_D32_SFLOAT;
+
+            depthImageViewcreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            depthImageViewcreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            depthImageViewcreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            depthImageViewcreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+            depthImageViewcreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            depthImageViewcreateInfo.subresourceRange.baseMipLevel = 0;
+            depthImageViewcreateInfo.subresourceRange.levelCount = 1;
+            depthImageViewcreateInfo.subresourceRange.baseArrayLayer = 0;
+            depthImageViewcreateInfo.subresourceRange.layerCount = 1;
+
+            VK_CHECK(vkCreateImageView(_device, &depthImageViewcreateInfo, nullptr, &_depthImageView));
 
             DeletionQueue::push_function([=]()
             {

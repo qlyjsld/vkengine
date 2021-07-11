@@ -6,6 +6,7 @@
 
 #include "VkEngine/Renderer/DeviceHandler.h"
 #include "VkEngine/Renderer/SurfaceHandler.h"
+#include "VkEngine/Renderer/BufferHandler.h"
 
 namespace VkEngine
 {
@@ -43,6 +44,9 @@ namespace VkEngine
 
 		std::vector<VkImage> _swapChainImages;
 		std::vector<VkImageView> _swapChainImageViews;
+
+        ImageID _depthImage;
+        VkImageView _depthImageView;
 
         QueueFamilyIndices _indices;
 
