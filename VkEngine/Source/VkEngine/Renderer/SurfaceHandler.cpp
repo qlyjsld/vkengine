@@ -10,7 +10,7 @@ constexpr float HEIGHT = 900.0f;
 namespace VkEngine
 {
 
-    void SurfaceHandler::init(VkInstance instance)
+    void SurfaceHandler::SurfaceHandler(VkInstance instance)
     {
         if (!glfwInit())
 			throw std::runtime_error("GLFW initialization failed!");
@@ -29,7 +29,7 @@ namespace VkEngine
 		});
     }
 
-    void SurfaceHandler::release()
+    void SurfaceHandler::~SurfaceHandler()
     {
         glfwDestroyWindow(_window);
     }

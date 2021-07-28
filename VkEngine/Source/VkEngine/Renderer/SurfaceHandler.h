@@ -9,23 +9,13 @@ namespace VkEngine
 	{
 	public:
 
-		SurfaceHandler(VkInstance instance)
-		{
-			init(instance);
-		}
-
-		~SurfaceHandler()
-		{
-			release();
-		};
+		SurfaceHandler(VkInstance instance);
+		~SurfaceHandler();
 
 		struct GLFWwindow* _window{ nullptr };
 
 		VkSurfaceKHR _surface;
 
 		inline VkSurfaceKHR getSurface() { return _surface; };
-
-		void init();
-		void release();
 	};
 }

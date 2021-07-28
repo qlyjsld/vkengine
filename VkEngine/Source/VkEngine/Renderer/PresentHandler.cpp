@@ -3,11 +3,6 @@
 namespace VkEngine
 {
 
-	void PresentHandler::init()
-	{
-		// do nothing
-	}
-
 	void PresentHandler::release()
 	{
 		if (_swapChainHandle != nullptr)

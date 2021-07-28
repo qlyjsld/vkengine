@@ -15,8 +15,6 @@ namespace VkEngine
 
 		PresentHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle)
 		{
-			init();
-
 			_swapChainHandle = new SwapChainHandler(deviceHandle, surfaceHandle);
 			_descriptorHandle = new DescriptorHandler(deviceHandle);
 			_renderPassHandle = new RenderPassHandler();
@@ -31,7 +29,6 @@ namespace VkEngine
 		DescriptorHandler* _descriptorHandle;
 		RenderPassHandler* _renderPassHandle;
 
-		void init();
 		void release();
 	};
 }

@@ -12,6 +12,7 @@ namespace VkEngine
 
     struct AllocatedBuffer
     {
+        size_t bufferSize;
         VkBuffer _buffer;
 		VmaAllocation _allocation;
     };
@@ -26,15 +27,8 @@ namespace VkEngine
     {
     public:
 
-        BufferHandler(VkInstance instance, DeviceHandler* deviceHandle)
-        {
-            init(instance, deviceHandle);
-        }
-
-        ~BufferHandler()
-        {
-            release();
-        }
+        BufferHandler(VkInstance instance, DeviceHandler* deviceHandle);
+        ~BufferHandler() {};
 
         static VmaAllocator _allocator;
 
@@ -44,10 +38,9 @@ namespace VkEngine
         static BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
         static BufferID createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags imageUsage, VmaMemoryUsage memoryUsage);
 
-        static AllocatedBuffer& getBuffer(BufferID bufferId);
-        static AllocatedImage& getImage(ImageID imageId);
+        static inline AllocatedBuffer& getBuffer(BufferID bufferId);
+        static inline AllocatedImage& getImage(ImageID imageId);
 
-        static void init(VkInstance instance, DeviceHandler* deviceHandle);
-        static void release();
+        static inline size_t getBufferSize(BufferID bufferID);
     };
 }

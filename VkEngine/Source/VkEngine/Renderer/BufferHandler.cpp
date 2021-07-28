@@ -23,11 +23,13 @@ namespace VkEngine
 		vmaallocInfo.usage = memoryUsage;
 
 		AllocatedBuffer newbuffer;
+		newbuffer.bufferSize = allocSize;
+
 		VK_CHECK(vmaCreateBuffer(_allocator, &bufferinfo, &vmaallocInfo, &newbuffer._buffer, &newbuffer._allocation, nullptr));
 
 		_allocatedBuffers.push_back(newbuffer);
 
-		DeletionQueue::push_function([&]()
+		DeletionQueue::push_function([=]()
 		{
 			vmaDestroyBuffer(_allocator, newbuffer._buffer, newbuffer._allocation);
 		});
@@ -94,7 +96,12 @@ namespace VkEngine
 		}
 	}
 
-    void BufferHandler::init(VkInstance instance, DeviceHandler* deviceHandle)
+	size_t BufferHandler::getBufferSize(BufferID bufferID)
+	{
+		return _allocatedBuffers[bufferID].bufferSize;
+	}
+
+    void BufferHandler::BufferHandler(VkInstance instance, DeviceHandler* deviceHandle)
     {
         // initialize the memory allocator
 		VmaAllocatorCreateInfo allocatorInfo{};
@@ -107,10 +114,5 @@ namespace VkEngine
 		{
 			vmaDestroyAllocator(_allocator);
 		});
-    }
-
-    void BufferHandler::release()
-    {
-		// do nothing
     }
 }

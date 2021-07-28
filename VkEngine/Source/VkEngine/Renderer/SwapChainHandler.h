@@ -22,15 +22,8 @@ namespace VkEngine
     {
     public:
 
-        SwapChainHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle)
-        {
-            init(deviceHandle, surfaceHandle);
-        }
-
-        ~SwapChainHandler()
-        {
-            release();
-        }
+        SwapChainHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle);
+        ~SwapChainHandler() {};
 
         VkSwapchainKHR _swapChain;
         VkFormat _swapChainImageFormat;
@@ -49,9 +42,6 @@ namespace VkEngine
         VkImageView _depthImageView;
 
         QueueFamilyIndices _indices;
-
-        void init(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle);
-        void release();
 
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 		VkSurfaceFormatKHR chooseSwapSurfaceFormat(std::vector<VkSurfaceFormatKHR> availableFormats);

@@ -1,17 +1,72 @@
 #include "VkEngine/Renderer/DescriptorHandler.h"
 #include "VkEngine/Renderer/BufferHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/ConsoleVariableSystem.h"
 
 #include <vulkan/vulkan.h>
 #include <array>
 
+AutoInt FRAME_OVERLAP(2, "FRAME_OVERLAP", "FRAME_OVERLAP", ConsoleVariableFlag::NONE);
+
 namespace VkEngine
 {
 
-    void DescriptorHandler::init(DeviceHandler* deviceHandle)
+	void DescriptorHandler::DescriptorSetBuilder::build(DeviceHandler* deviceHandle)
+	{
+		if (!buffers.empty() && !bindings.empty())
+		{
+			VkDescriptorSetLayoutCreateInfo setInfo{};
+			setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			setInfo.pNext = nullptr;
+
+			setInfo.bindingCount = bindings.size();
+			setInfo.flags = 0;
+			setInfo.pBindings = bindings.data();
+
+			VK_CHECK(vkCreateDescriptorSetLayout(deviceHandle->getDevice(), &setInfo, nullptr, &layout));
+
+			DeletionQueue::push_function([=]()
+			{
+				vkDestroyDescriptorSetLayout(deviceHandle->getDevice(), layout, nullptr);
+			});
+
+			VkDescriptorSetAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.pNext = nullptr;
+
+			allocInfo.descriptorPool = _descriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &layout;
+
+			vkAllocateDescriptorSets(deviceHandle->getDevice(), &allocInfo, &descriptor);
+
+			for (uint32_t i = 0; i < buffers.size(); i++)
+			{
+				VkDescriptorBufferInfo bufferInfo{};
+				bufferInfo.buffer = buffers[i];
+				bufferInfo.offset = 0;
+				bufferInfo.range = sizeof(BufferHandler::getBufferSize(buffers[i]));
+
+				VkWriteDescriptorSet writeSet{};
+				writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writeSet.pNext = nullptr;
+
+				writeSet.dstBinding = i;
+				writeSet.dstSet = descriptorSet;
+				writeSet.descriptorCount = 1;
+				writeSet.descriptorType = types[i];
+				writeSet.pBufferInfo = bufferInfo;
+
+				VkWriteDescriptorSet writeOperation = { writeSet };
+				vkUpdateDescriptorSets(deviceHandle->getDevice(), 1, writeOperation, 0, nullptr);
+			}
+		}
+	}
+
+    void DescriptorHandler::DescriptorHandler(DeviceHandler* deviceHandle)
     {
         // create indirect buffer
-		_indirectBuffer = BufferHandler::createBuffer(FRAME_OVERLAP * sizeof(VkDrawIndirectCommand), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		_indirectBuffer = BufferHandler::createBuffer(FRAME_OVERLAP.get() * sizeof(VkDrawIndirectCommand), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		// create a descriptor pool that will hold 10 uniform buffers
 		std::vector<VkDescriptorPoolSize> sizes =
@@ -32,114 +87,9 @@ namespace VkEngine
 
 		VK_CHECK(vkCreateDescriptorPool(deviceHandle->getDevice(), &poolInfo, nullptr, &_descriptorPool));
 
-		DeletionQueue::push_function([&]()
+		DeletionQueue::push_function([=]()
 		{
 			vkDestroyDescriptorPool(deviceHandle->getDevice(), _descriptorPool, nullptr);
-		});
-
-		size_t cameraParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUCameraData));
-		_cameraParametersBuffer = BufferHandler::createBuffer(cameraParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-		size_t sceneParamBufferSize = FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData));
-		_sceneParametersBuffer = BufferHandler::createBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-		// information about the binding
-		VkDescriptorSetLayoutBinding cameraBind = createDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 0);
-		VkDescriptorSetLayoutBinding sceneBind = createDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-	
-		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { cameraBind, sceneBind };
-
-		createDescriptorSetLayout(bindings, deviceHandle->getDevice(), set0Layout);
-
-		// allocate one descriptor set for each frame
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.pNext = nullptr;
-
-		allocInfo.descriptorPool = _descriptorPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &set0Layout;
-
-		vkAllocateDescriptorSets(deviceHandle->getDevice(), &allocInfo, &set0Layout);
-
-		// information about the buffer we want to point at in the descriptor
-		VkDescriptorBufferInfo cambinfo{};
-		cambinfo.buffer = _cameraParametersBuffer._buffer;
-		cambinfo.offset = 0;
-		cambinfo.range = sizeof(GPUCameraData);
-
-		VkDescriptorBufferInfo scenebinfo{};
-		scenebinfo.buffer = _sceneParametersBuffer._buffer;
-		scenebinfo.offset = 0;
-		scenebinfo.range = sizeof(GPUSceneData);
-
-		VkWriteDescriptorSet camwrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &cambinfo, 0);
-		VkWriteDescriptorSet scenewrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _globalDescriptor, &scenebinfo, 1);
-
-		VkDescriptorSetLayoutBinding objBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
-
-		VkDescriptorSetLayoutCreateInfo set2Info{};
-		set2Info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		set2Info.pNext = nullptr;
-
-		set2Info.bindingCount = 1;
-		set2Info.flags = 0;
-		set2Info.pBindings = &objBind;
-
-		VK_CHECK(vkCreateDescriptorSetLayout(_device, &set2Info, nullptr, &_objectSetLayout));
-
-		_deletionQueue.push_function([&]()
-		{
-			vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
-		});
-
-		for (int i = 0; i < FRAME_OVERLAP; i++)
-		{
-			const int MAX_OBJECTS = 32767;
-			_frames[i]._objectBuffer = create_buffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-			_deletionQueue.push_function([=]()
-			{
-				vmaDestroyBuffer(_allocator, _frames[i]._objectBuffer._buffer, _frames[i]._objectBuffer._allocation);
-			});
-
-			// allocate one descriptor set for each frame
-			VkDescriptorSetAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.pNext = nullptr;
-
-			allocInfo.descriptorPool = _descriptorPool;
-			allocInfo.descriptorSetCount = 1;
-			allocInfo.pSetLayouts = &_objectSetLayout;
-
-			vkAllocateDescriptorSets(_device, &allocInfo, &_frames[i]._objectDescriptor);
-
-			VkDescriptorBufferInfo objbinfo{};
-			objbinfo.buffer = _frames[i]._objectBuffer._buffer;
-			objbinfo.offset = 0;
-			objbinfo.range = sizeof(GPUObjectData) * MAX_OBJECTS;
-
-			VkWriteDescriptorSet objwrite = vk_info::WriteDescriptorSetBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i]._objectDescriptor, &objbinfo, 0);
-
-			VkWriteDescriptorSet setwrites[] = { camwrite, scenewrite, objwrite };
-			vkUpdateDescriptorSets(_device, 3, setwrites, 0, nullptr);
-		}
-
-		VkDescriptorSetLayoutBinding texBind = vk_info::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-
-		VkDescriptorSetLayoutCreateInfo set3Info{};
-		set3Info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		set3Info.pNext = nullptr;
-
-		set3Info.bindingCount = 1;
-		set3Info.flags = 0;
-		set3Info.pBindings = &texBind;
-
-		VK_CHECK(vkCreateDescriptorSetLayout(_device, &set3Info, nullptr, &_textureSetLayout));
-
-		_deletionQueue.push_function([&]()
-		{
-			vkDestroyDescriptorSetLayout(_device, _textureSetLayout, nullptr);
 		});
     }
 
@@ -166,7 +116,7 @@ namespace VkEngine
 
 		VK_CHECK(vkCreateDescriptorSetLayout(device, &setInfo, nullptr, &layout));
 
-		DeletionQueue::push_function([&]()
+		DeletionQueue::push_function([=]()
 		{
 			vkDestroyDescriptorSetLayout(device, layout, nullptr);
 		});

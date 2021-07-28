@@ -8,7 +8,7 @@ namespace VkEngine
 
 	struct DeletionQueue
 	{
-		static std::deque<std::function<void()>> deletors;
+	public:
 
 		static void push_function(std::function<void()>&& func)
 		{
@@ -22,5 +22,9 @@ namespace VkEngine
 			}
 			deletors.clear();
 		}
+
+	private:
+
+		static std::deque<std::function<void()>> deletors;
 	};
 }

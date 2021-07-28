@@ -6,7 +6,7 @@
 namespace VkEngine
 {
 
-	void DeviceHandler::init(VkInstance instance)
+	void DeviceHandler::DeviceHandler(VkInstance instance)
 	{
 		// pick physical device
 		uint32_t deviceCount = 0;
@@ -106,10 +106,5 @@ namespace VkEngine
         {
             vkDestroyDevice(_device, nullptr);
         });
-	}
-
-	void DeviceHandler::release()
-	{
-        // do nothing
 	}
 }

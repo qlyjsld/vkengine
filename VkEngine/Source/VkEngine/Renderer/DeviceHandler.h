@@ -21,15 +21,8 @@ namespace VkEngine
 	{
 	public:
 
-		DeviceHandler(VkInstance intance)
-		{
-			init(intance);
-		}
-
-		~DeviceHandler() 
-		{
-			release();
-		};
+		DeviceHandler(VkInstance intance);
+		~DeviceHandler() {};
 
 		VkDevice _device;
 		VkPhysicalDevice _physicalDevice;
@@ -41,9 +34,6 @@ namespace VkEngine
 		inline VkPhysicalDevice getPhysicalDevice() { return _physicalDevice; };
 
 		inline QueueFamilyIndices getIndices() { return _indices; };
-
-		void init(VkInstance intance);
-		void release();
 	};
 }
 

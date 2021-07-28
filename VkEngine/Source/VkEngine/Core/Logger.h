@@ -26,6 +26,7 @@ namespace VkEngine
         static std::shared_ptr<spdlog::logger> getClientLogger() { return _clientLogger; };
 
     private:
+
         static std::shared_ptr<spdlog::logger> _coreLogger;
         static std::shared_ptr<spdlog::logger> _clientLogger;
     };
