@@ -25,6 +25,14 @@ namespace VkEngine
         SwapChainHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle);
         ~SwapChainHandler() {};
 
+        inline VkSwapchainKHR getSwapChain() { return _swapChain; };
+        inline VkFormat getSwapChainImageFormat() { return _swapChainImageFormat; };
+        inline VkExtent2D getSwapChainExtent() { return _swapChainExtent; };
+
+        inline VkFormat getDepthImageFormat() { return _depthImageFormat; };
+
+    private:
+
         VkSwapchainKHR _swapChain;
         VkFormat _swapChainImageFormat;
 		VkExtent2D _swapChainExtent;
@@ -40,6 +48,7 @@ namespace VkEngine
 
         ImageID _depthImage;
         VkImageView _depthImageView;
+        VkFormat _depthImageFormat;
 
         QueueFamilyIndices _indices;
 

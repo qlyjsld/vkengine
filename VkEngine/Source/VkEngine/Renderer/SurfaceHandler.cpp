@@ -1,5 +1,6 @@
 #include "VkEngine/Renderer/SurfaceHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/ConsoleVariableSystem.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>

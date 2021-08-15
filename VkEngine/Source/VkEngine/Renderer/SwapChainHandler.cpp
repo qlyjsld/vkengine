@@ -2,6 +2,8 @@
 #include "VkEngine/Renderer/BufferHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
 
+constexpr VkPresentModeKHR PRESENTMODE = VK_PRESENT_MODE_IMMEDIATE_KHR; // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
+
 namespace VkEngine
 {
 
@@ -104,6 +106,8 @@ namespace VkEngine
             1
         };
 
+        _depthImageFormat = VK_FORMAT_D32_SFLOAT;
+
         // create the depth image
         _depthImage = BufferHandler::createImage(VK_FORMAT_D32_SFLOAT, depthImageExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
@@ -182,7 +186,7 @@ namespace VkEngine
     {
         for (const auto& availablePresentMode : availablePresentModes)
         {
-            if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
+            if (availablePresentMode == PRESENTMODE)
             {
                 return availablePresentMode;
             }

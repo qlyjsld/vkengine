@@ -12,10 +12,12 @@ namespace VkEngine
 		SurfaceHandler(VkInstance instance);
 		~SurfaceHandler();
 
+		inline VkSurfaceKHR getSurface() { return _surface; };
+
+	private:
+
 		struct GLFWwindow* _window{ nullptr };
 
 		VkSurfaceKHR _surface;
-
-		inline VkSurfaceKHR getSurface() { return _surface; };
 	};
 }

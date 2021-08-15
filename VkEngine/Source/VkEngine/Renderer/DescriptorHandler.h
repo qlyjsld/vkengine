@@ -63,14 +63,16 @@ namespace VkEngine
         DescriptorHandler(DeviceHandler* deviceHandle);
         ~DescriptorHandler();
 
+        VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
+        void createDescriptorSetLayout(const std::span<VkDescriptorSetLayoutBinding>& bindings, VkDevice device, VkDescriptorSetLayout layout);
+        void allocateDescriptorSets();
+
+    private:
+        
         VkDescriptorPool _descriptorPool;
 
         std::vector<DescriptorSetBuilder> _descriptorSets;
 
         BufferID _indirectBuffer;
-
-        VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
-        void createDescriptorSetLayout(const std::span<VkDescriptorSetLayoutBinding>& bindings, VkDevice device, VkDescriptorSetLayout layout);
-        void allocateDescriptorSets();
     };
 }

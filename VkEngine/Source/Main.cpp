@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 #include "VkEngine.h"
-#include "QuakeStyleConsole.h"
+#include "VkEngine/Core/ConsoleVariableSystem.h"
 
 int main()
 {
@@ -10,7 +10,7 @@ int main()
 
 	try
 	{
-		VkEngine::Renderer engine{};
+		VkEngine::Renderer renderer();
 	}
 	catch (const std::exception& e)
 	{

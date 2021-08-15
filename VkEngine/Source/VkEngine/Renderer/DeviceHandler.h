@@ -24,6 +24,8 @@ namespace VkEngine
 		DeviceHandler(VkInstance intance);
 		~DeviceHandler() {};
 
+	private:
+
 		VkDevice _device;
 		VkPhysicalDevice _physicalDevice;
 		VkPhysicalDeviceProperties _deviceProperties;

@@ -1,4 +1,7 @@
 #pragma once
+#include <vulkan/vulkan.h>
+
+#include "VkEngine/Renderer/SwapChainHandler.h"
 
 namespace VkEngine
 {
@@ -7,8 +10,14 @@ namespace VkEngine
     {
     public:
 
-        RenderPassHandler();
+        RenderPassHandler(SwapChainHandler* swapChainHandler);
 
-        ~RenderPassHandler();
+        ~RenderPassHandler() {};
+
+        inline getRenderpass() { return _renderpass; };
+
+    private:
+
+        VkRenderpass _renderpass;
     };
 }

@@ -30,11 +30,6 @@ namespace VkEngine
         BufferHandler(VkInstance instance, DeviceHandler* deviceHandle);
         ~BufferHandler() {};
 
-        static VmaAllocator _allocator;
-
-        static std::vector<AllocatedBuffer> _allocatedBuffers;
-        static std::vector<AllocatedImage> _allocatedImages;
-
         static BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
         static BufferID createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags imageUsage, VmaMemoryUsage memoryUsage);
 
@@ -42,5 +37,12 @@ namespace VkEngine
         static inline AllocatedImage& getImage(ImageID imageId);
 
         static inline size_t getBufferSize(BufferID bufferID);
+        
+    private:
+
+        static VmaAllocator _allocator;
+
+        static std::vector<AllocatedBuffer> _allocatedBuffers;
+        static std::vector<AllocatedImage> _allocatedImages;
     };
 }
