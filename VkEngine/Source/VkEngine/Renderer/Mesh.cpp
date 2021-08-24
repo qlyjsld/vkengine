@@ -11,7 +11,7 @@ namespace VkEngine
 
 	VertexInputDescription Vertex::getVertexDescription()
 	{
-		VertexInputDescription description;
+		VertexInputDescription description{};
 
 		// 1 vertex buffer binding
 		VkVertexInputBindingDescription mainBinding{};

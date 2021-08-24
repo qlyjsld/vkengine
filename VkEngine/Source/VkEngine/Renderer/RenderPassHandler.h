@@ -1,10 +1,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-#include "VkEngine/Renderer/SwapChainHandler.h"
-
 namespace VkEngine
 {
+
+    class SwapChainHandler;
 
     class RenderPassHandler
     {

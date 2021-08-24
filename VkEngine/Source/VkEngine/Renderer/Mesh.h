@@ -1,10 +1,10 @@
 #pragma once
 
-#include "VkEngine/Renderer/vk_type.h"
 // #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 
+#include <vulkan/vulkan.h>
 #include <string>
 #include <unordered_map>
 

@@ -3,12 +3,13 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
-#include "VkEngine/Renderer/DeviceHandler.h"
-
 namespace VkEngine
 {
-    typedef BufferID size_t;
-    typedef ImageID size_t;
+
+    class DeviceHandler;
+
+    typedef size_t BufferID;
+    typedef size_t ImageID;
 
     struct AllocatedBuffer
     {

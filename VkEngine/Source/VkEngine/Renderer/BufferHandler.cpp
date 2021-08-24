@@ -1,4 +1,5 @@
 #include "VkEngine/Renderer/BufferHandler.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
 
 namespace VkEngine

@@ -4,12 +4,12 @@
 #include <vector>
 #include <optional>
 
-#include "VkEngine/Renderer/DeviceHandler.h"
-#include "VkEngine/Renderer/SurfaceHandler.h"
-#include "VkEngine/Renderer/BufferHandler.h"
-
 namespace VkEngine
 {
+
+    class DeviceHandler;
+    class SurfaceHandler;
+    class BufferHandler;
 
 	struct SwapChainSupportDetails
 	{
@@ -26,9 +26,9 @@ namespace VkEngine
         ~SwapChainHandler() {};
 
         inline VkSwapchainKHR getSwapChain() { return _swapChain; };
+        inline std::vector<VkImageView>& getSwapChainImageViews() { return _swapChainImageViews; };
         inline VkFormat getSwapChainImageFormat() { return _swapChainImageFormat; };
         inline VkExtent2D getSwapChainExtent() { return _swapChainExtent; };
-
         inline VkFormat getDepthImageFormat() { return _depthImageFormat; };
 
     private:

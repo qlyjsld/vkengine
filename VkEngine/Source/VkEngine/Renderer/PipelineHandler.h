@@ -1,17 +1,14 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-#include "VkEngine/Renderer/DescriptorHandler.h"
-
 namespace VkEngine
 {
+
+	class DescriptorHandler;
 
 	class PipelineHandler
 	{
 	public:
-
-		PipelineHandler(DescriptorHandler* descriptorHandle);
-		~PipelineHandler() {};
 
 		class PipelineBuilder
 		{
@@ -29,8 +26,11 @@ namespace VkEngine
 			VkPipelineMultisampleStateCreateInfo _multisampling;
 			VkPipelineLayout _pipelineLayout;
 			VkPipelineDepthStencilStateCreateInfo _depthStencil;
-			VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+			VkPipeline buildPipeline(VkDevice device, VkRenderPass renderPass);
 		};
+
+		PipelineHandler(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandle, RenderPassHandler* renderPassHandle);
+		~PipelineHandler() {};
 
 	private:
 

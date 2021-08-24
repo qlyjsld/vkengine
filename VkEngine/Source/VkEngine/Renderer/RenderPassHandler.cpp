@@ -1,4 +1,5 @@
 #include "VkEngine/Renderer/RenderPassHandler.h"
+#include "VkEngine/Renderer/SwapChainHandler.h"
 
 #include <vulkan/vulkan.h>
 

@@ -1,5 +1,13 @@
 #include "VkEngine/Renderer/Renderer.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
+#include "VkEngine/Renderer/SurfaceHandler.h"
+#include "VkEngine/Renderer/BufferHandler.h"
+#include "VkEngine/Renderer/SwapChainHandler.h"
+#include "VkEngine/Renderer/DescriptorHandler.h"
+#include "VkEngine/Renderer/RenderPassHandler.h"
+#include "VkEngine/Renderer/PipelineHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/ConsoleVariableSystem.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -139,6 +147,102 @@ namespace VkEngine
 				destroyDebugUtilsMessengerfunc(_instance, _debugMessager, nullptr);
 			});
 		}
+	}
+
+	void Renderer::initFrameBuffer()
+	{
+		_swapChainFrameBuffers.resize(ConsoleVariableSystem::get()->getIntVariableCurrentByHash("FRAME_OVERLAP"));
+
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = _renderPassHandle->getRenderpass();
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.width = _swapChainHandle->getSwapChainExtent().width;
+		framebufferInfo.height = _swapChainHandle->getSwapChainExtent().height;
+		framebufferInfo.layers = 1;
+
+		for (size_t i = 0; i < _swapChainFrameBuffers.size(); i++)
+		{
+			VkImageView attachments[] =
+			{
+				_swapChainHandle->getSwapChainImageViews()[i],
+				_depthImageView
+			};
+			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.attachmentCount = 2;
+
+			VK_CHECK(vkCreateFramebuffer(_device, &framebufferInfo, nullptr, _swapChainHandle->getSwapChainImageViews()[i]));
+
+			DeletionQueue::push_function([=]()
+			{
+				vkDestroyFramebuffer(_device, _swapChainFrameBuffers[i], nullptr);
+			});
+		}
+	}
+
+	void Renderer::initCommand()
+	{
+		VkCommandPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = _indices.graphicFamily.value();
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // optional
+
+		for (auto& frame : _frames)
+		{
+			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._commandPool));
+
+			DeletionQueue::push_function([=]()
+			{
+				vkDestroyCommandPool(_device, frame._commandPool, nullptr);
+			});
+
+			VkCommandBufferAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.commandPool = frame._commandPool;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
+
+			VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, &frame._maincommandBuffer));
+		}
+
+		VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_uploadContext._commandPool));
+
+		DeletionQueue::push_function([=]()
+		{
+			vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
+		});
+	}
+
+	void Renderer::initSYncObject()
+	{
+		VkSemaphoreCreateInfo semaphoreInfo{};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		for (auto& frame : _frames)
+		{
+			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._imageAvailableSemaphore));
+			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._renderFinishedSemaphore));
+			VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &frame._inFlightFences));
+			DeletionQueue::push_function([=]()
+			{
+				vkDestroySemaphore(_device, frame._imageAvailableSemaphore, nullptr);
+				vkDestroySemaphore(_device, frame._renderFinishedSemaphore, nullptr);
+				vkDestroyFence(_device, frame._inFlightFences, nullptr);
+			});
+		}
+
+		fenceInfo.flags = NULL;
+
+		VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_uploadContext._uploadFence));
+
+		DeletionQueue::push_function([=]()
+		{
+			vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
+		});
 	}
 
 	void Renderer::release()

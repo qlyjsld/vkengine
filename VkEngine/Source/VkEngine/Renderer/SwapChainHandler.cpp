@@ -1,4 +1,6 @@
 #include "VkEngine/Renderer/SwapChainHandler.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
+#include "VkEngine/Renderer/SurfaceHandler.h"
 #include "VkEngine/Renderer/BufferHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
 
