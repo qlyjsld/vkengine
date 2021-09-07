@@ -6,7 +6,7 @@
 #include "VkEngine/Renderer/DescriptorHandler.h"
 #include "VkEngine/Renderer/RenderPassHandler.h"
 #include "VkEngine/Renderer/PipelineHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/DeletionQueue.h"
 #include "VkEngine/Core/ConsoleVariableSystem.h"
 
 #define GLFW_INCLUDE_VULKAN
@@ -17,39 +17,49 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "VkEngine/Core/GlobalMacro.h"
+
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
 
-// vulkan related error detection macro
-#define VK_CHECK(x)\
-	do\
-	{\
-		VkResult err = x;\
-		if (err){\
-			std::cout << "Error: " << err << std::endl;\
-			abort();\
-		}\
-	} while (0);
-
 const std::vector<const char*> validationLayers =
 {
 	"VK_LAYER_KHRONOS_validation"
 };
 
-const std::vector<const char*> deviceExtensions =
-{
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
-};
-
 namespace VkEngine
 {
 
+	Renderer::Renderer()
+	{
+		init();
+
+		_deviceHandle = new DeviceHandler(_instance);
+		_surfaceHandle = new SurfaceHandler(_instance);
+		_bufferHandle = new BufferHandler(_instance, _deviceHandle);
+		_swapChainHandle = new SwapChainHandler(_deviceHandle, _surfaceHandle);
+		_descriptorHandle = new DescriptorHandler(_deviceHandle);
+		_renderPassHandle = new RenderPassHandler(_swapChainHandle, _deviceHandle);
+		_pipelineHandle = new PipelineHandler(_deviceHandle, _descriptorHandle, _renderPassHandle);
+
+		initFrameBuffer();
+		initCommand();
+		initSyncObject();
+	}
+
+	Renderer::~Renderer()
+	{
+		DeletionQueue::flush();
+		release();
+	}
+
 	void Renderer::init()
 	{
+		FRAME_OVERLAP = ConsoleVariableSystem::get()->getIntVariableCurrentByHash("FRAME_OVERLAP");
+
 		// check validation layers support
 		uint32_t layerCount;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -151,7 +161,9 @@ namespace VkEngine
 
 	void Renderer::initFrameBuffer()
 	{
-		_swapChainFrameBuffers.resize(ConsoleVariableSystem::get()->getIntVariableCurrentByHash("FRAME_OVERLAP"));
+		VkDevice device = _deviceHandle->getDevice();
+
+		_swapChainFrameBuffers.resize(FRAME_OVERLAP);
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -166,55 +178,62 @@ namespace VkEngine
 			VkImageView attachments[] =
 			{
 				_swapChainHandle->getSwapChainImageViews()[i],
-				_depthImageView
+				_swapChainHandle->getDepthImageView()
 			};
 			framebufferInfo.pAttachments = attachments;
 			framebufferInfo.attachmentCount = 2;
 
-			VK_CHECK(vkCreateFramebuffer(_device, &framebufferInfo, nullptr, _swapChainHandle->getSwapChainImageViews()[i]));
+			VK_CHECK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &_swapChainFrameBuffers[i]));
 
 			DeletionQueue::push_function([=]()
 			{
-				vkDestroyFramebuffer(_device, _swapChainFrameBuffers[i], nullptr);
+				vkDestroyFramebuffer(device, _swapChainFrameBuffers[i], nullptr);
 			});
 		}
 	}
 
 	void Renderer::initCommand()
 	{
+		VkDevice device = _deviceHandle->getDevice();
+
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = _indices.graphicFamily.value();
+		poolInfo.queueFamilyIndex = _swapChainHandle->getGraphicFamilyIndex();
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // optional
 
-		for (auto& frame : _frames)
+		for (size_t i = 0; i < FRAME_OVERLAP; i++)
 		{
-			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._commandPool));
+			FrameData* frame = &_frames[i];
+
+			VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &frame->_commandPool));
 
 			DeletionQueue::push_function([=]()
 			{
-				vkDestroyCommandPool(_device, frame._commandPool, nullptr);
+				vkDestroyCommandPool(device, frame->_commandPool, nullptr);
 			});
 
 			VkCommandBufferAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool = frame._commandPool;
+			allocInfo.commandPool = frame->_commandPool;
 			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocInfo.commandBufferCount = 1;
 
-			VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, &frame._maincommandBuffer));
+			VK_CHECK(vkAllocateCommandBuffers(device, &allocInfo, &frame->_maincommandBuffer));
 		}
 
-		VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_uploadContext._commandPool));
+		VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &_uploadContext._commandPool));
 
 		DeletionQueue::push_function([=]()
 		{
-			vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
+			vkDestroyCommandPool(device, _uploadContext._commandPool, nullptr);
 		});
 	}
 
-	void Renderer::initSYncObject()
+	void Renderer::initSyncObject()
 	{
+		VkDevice device = _deviceHandle->getDevice();
+		_frames = new FrameData[FRAME_OVERLAP];
+
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -222,46 +241,104 @@ namespace VkEngine
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (auto& frame : _frames)
+		for (size_t i = 0; i < FRAME_OVERLAP; i++)
 		{
-			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._imageAvailableSemaphore));
-			VK_CHECK(vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &frame._renderFinishedSemaphore));
-			VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &frame._inFlightFences));
+			FrameData* frame = &_frames[i];
+			VK_CHECK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame->_imageAvailableSemaphore));
+			VK_CHECK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame->_renderFinishedSemaphore));
+			VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr, &frame->_inFlightFences));
+
 			DeletionQueue::push_function([=]()
 			{
-				vkDestroySemaphore(_device, frame._imageAvailableSemaphore, nullptr);
-				vkDestroySemaphore(_device, frame._renderFinishedSemaphore, nullptr);
-				vkDestroyFence(_device, frame._inFlightFences, nullptr);
+				vkDestroySemaphore(device, frame->_imageAvailableSemaphore, nullptr);
+				vkDestroySemaphore(device, frame->_renderFinishedSemaphore, nullptr);
+				vkDestroyFence(device, frame->_inFlightFences, nullptr);
 			});
 		}
 
 		fenceInfo.flags = NULL;
 
-		VK_CHECK(vkCreateFence(_device, &fenceInfo, nullptr, &_uploadContext._uploadFence));
+		VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr, &_uploadContext._uploadFence));
 
 		DeletionQueue::push_function([=]()
 		{
-			vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
+			vkDestroyFence(device, _uploadContext._uploadFence, nullptr);
 		});
+	}
+
+	void Renderer::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func)
+	{
+		VkDevice device = _deviceHandle->getDevice();
+
+		VkCommandBufferAllocateInfo cmdAllocInfo{};
+		cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmdAllocInfo.commandPool = _uploadContext._commandPool;
+		cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmdAllocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer cmd{};
+		VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &cmd));
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0; // optional
+		beginInfo.pInheritanceInfo = nullptr; // optional
+
+		VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+		func(cmd);
+
+		VK_CHECK(vkEndCommandBuffer(cmd));
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmd;
+
+		VK_CHECK(vkQueueSubmit(_swapChainHandle->getGraphicQueue(), 1, &submitInfo, _uploadContext._uploadFence));
+		vkWaitForFences(device, 1, &_uploadContext._uploadFence, VK_TRUE, 1000000000);
+		vkResetFences(device, 1, &_uploadContext._uploadFence);
+
+		vkResetCommandPool(device, _uploadContext._commandPool, NULL);
 	}
 
 	void Renderer::release()
 	{
 		DeletionQueue::flush();
 
-		if (_device != nullptr)
+		if (_deviceHandle != nullptr)
 		{
-			delete _device;
+			delete _deviceHandle;
 		}
 
-		if (_present != nullptr)
+		if (_surfaceHandle != nullptr)
 		{
-			delete _present;
+			delete _surfaceHandle;
 		}
 
-		if (_pipeline != nullptr)
+		if (_bufferHandle != nullptr)
 		{
-			delete _pipeline;
+			delete _bufferHandle;
+		}
+
+		if (_swapChainHandle != nullptr)
+		{
+			delete _swapChainHandle;
+		}
+
+		if (_descriptorHandle != nullptr)
+		{
+			delete _descriptorHandle;
+		}
+
+		if (_renderPassHandle != nullptr)
+		{
+			delete _renderPassHandle;
+		}
+
+		if (_pipelineHandle != nullptr)
+		{
+			delete _pipelineHandle;
 		}
 	}
 

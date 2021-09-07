@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <vector>
+#include <functional>
 
 namespace VkEngine
 {
@@ -23,32 +25,22 @@ namespace VkEngine
 		VkFence _inFlightFences;
 	};
 
+	struct UploadContext
+	{
+		VkFence _uploadFence;
+		VkCommandPool _commandPool;
+	};
+
 	class Renderer
 	{
 	public:
 
-		Renderer()
-		{
-			init();
+		Renderer();
+		~Renderer();
 
-			_deviceHandle = new DeviceHandler(_instance);
-			_surfaceHandle = new SurfaceHandler(_instance);
-			_bufferHandle = new BufferHandler(_instance, _deviceHandle);
-			_swapChainHandle = new SwapChainHandler(_deviceHandle, _surfaceHandle);
-			_descriptorHandle = new DescriptorHandler(_deviceHandle);
-			_renderPassHandle = new RenderPassHandler(_swapChainHandle);
-			_pipelineHandle = new PipelineHandler(_deviceHandle, _descriptorHandle, _renderPassHandle);
-
-			initFrameBuffer();
-			initCommand();
-			initSyncObject();
-		}
-
-		~Renderer()
-		{
-			DeletionQueue::flush();
-			release();
-		}
+		// immediate commands
+		UploadContext _uploadContext;
+		void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& func);
 
 	private:
 
@@ -66,14 +58,16 @@ namespace VkEngine
 		std::vector<VkFramebuffer> _swapChainFrameBuffers;
 
 		// frame data
-		FrameData _frames[FRAME_OVERLAP];
+		FrameData* _frames;
+
+		int FRAME_OVERLAP;
 
 		void init();
 		void release();
 
 		void initFrameBuffer();
 		void initCommand();
-		void initSYncObject();
+		void initSyncObject();
 
 		// debug callback
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);

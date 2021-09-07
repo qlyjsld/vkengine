@@ -4,20 +4,21 @@
 namespace VkEngine
 {
 
+    class DeviceHandler;
     class SwapChainHandler;
 
     class RenderPassHandler
     {
     public:
 
-        RenderPassHandler(SwapChainHandler* swapChainHandler);
+        RenderPassHandler(SwapChainHandler* swapChainHandler, DeviceHandler* deviceHandler);
 
         ~RenderPassHandler() {};
 
-        inline getRenderpass() { return _renderpass; };
+        inline VkRenderPass getRenderpass() { return _renderpass; };
 
     private:
 
-        VkRenderpass _renderpass;
+        VkRenderPass _renderpass;
     };
 }

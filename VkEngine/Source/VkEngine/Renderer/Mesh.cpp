@@ -1,6 +1,9 @@
 #include "VkEngine/Renderer/Mesh.h"
-#include "VkEngine/Asset/Asset.h"
 #include "VkEngine/Renderer/Renderer.h"
+#include "VkEngine/Renderer/BufferHandler.h"
+#include "VkEngine/Core/DeletionQueue.h"
+#include "VkEngine/Asset/Asset.h"
+#include "vk_mem_alloc.h"
 
 #include <iostream>
 #include <future>
@@ -57,12 +60,12 @@ namespace VkEngine
 		return description;
 	}
 
-	void Mesh::loadFromObj(const char* filename, vk_renderer* renderer)
+	void Mesh::loadFromObj(const char* filename, class Renderer* renderer)
 	{
-		assets::assetFile asset{};
-		assets::loadAssetFile(filename, asset);
+		Asset::AssetFile asset{};
+		Asset::loadAssetFile(filename, asset);
 
-		assets::meshInfo info = assets::readMeshInfo(&asset);
+		Asset::MeshInfo info = Asset::readMeshInfo(&asset);
 
 		// allocate Staging Buffer
 		VkBufferCreateInfo stagingBufferInfo{};
@@ -77,20 +80,20 @@ namespace VkEngine
 
 		AllocatedBuffer stagingBuffer;
 
-		vmaCreateBuffer(renderer->_allocator, &stagingBufferInfo, &allocationInfo, &stagingBuffer._buffer, &stagingBuffer._allocation, nullptr);
+		vmaCreateBuffer(BufferHandler::getAllocator(), &stagingBufferInfo, &allocationInfo, &stagingBuffer._buffer, &stagingBuffer._allocation, nullptr);
 
 		// copy vertex data
 		void* data;
-		vmaMapMemory(renderer->_allocator, stagingBuffer._allocation, &data);
+		vmaMapMemory(BufferHandler::getAllocator(), stagingBuffer._allocation, &data);
 
 		std::cout << "compressed size: " << asset.binaryBlob.size() << std::endl;
 		std::cout << "dest size: " << info.meshSize << std::endl;
 
-		assets::unpackMesh(&info, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
+		Asset::unpackMesh(&info, asset.binaryBlob.data(), asset.binaryBlob.size(), (char*) data);
 
 		std::cout << "unpacked!" << std::endl;
 
-		vmaUnmapMemory(renderer->_allocator, stagingBuffer._allocation);
+		vmaUnmapMemory(BufferHandler::getAllocator(), stagingBuffer._allocation);
 
 		// allocate Vertex Buffer
 		VkBufferCreateInfo vertexBufferInfo{};
@@ -105,11 +108,11 @@ namespace VkEngine
 		Mesh mesh;
 		mesh._vertices.resize(info.meshSize / sizeof(Vertex));
 
-		vmaCreateBuffer(renderer->_allocator, &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr);
+		vmaCreateBuffer(BufferHandler::getAllocator(), &vertexBufferInfo, &allocationInfo, &mesh._vertexBuffer._buffer, &mesh._vertexBuffer._allocation, nullptr);
 
-		renderer->_deletionQueue.push_function([=]()
+		DeletionQueue::push_function([=]()
 		{
-			vmaDestroyBuffer(renderer->_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+			vmaDestroyBuffer(BufferHandler::getAllocator(), mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
 		});
 
 		renderer->immediate_submit([=](VkCommandBuffer cmd)
@@ -121,9 +124,9 @@ namespace VkEngine
 			vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1, &copy);
 		});
 
-		vmaDestroyBuffer(renderer->_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+		vmaDestroyBuffer(BufferHandler::getAllocator(), stagingBuffer._buffer, stagingBuffer._allocation);
 
-		renderer->_meshes[filename] = std::move(mesh);
+		// renderer->_meshes[filename] = std::move(mesh);
 
 		std::cout << "finished loading: " << filename << std::endl;
 	}

@@ -2,23 +2,27 @@
 #include "VkEngine/Renderer/DeviceHandler.h"
 #include "VkEngine/Renderer/SurfaceHandler.h"
 #include "VkEngine/Renderer/BufferHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/DeletionQueue.h"
+#include "VkEngine/Core/GlobalMacro.h"
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 constexpr VkPresentModeKHR PRESENTMODE = VK_PRESENT_MODE_IMMEDIATE_KHR; // VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR
 
 namespace VkEngine
 {
 
-    void SwapChainHandler::SwapChainHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle)
+    SwapChainHandler::SwapChainHandler(DeviceHandler* deviceHandle, SurfaceHandler* surfaceHandle)
     {
         // get queue
         vkGetDeviceQueue(deviceHandle->getDevice(), _indices.graphicFamily.value(), 0, &_graphicsQueue);
         vkGetDeviceQueue(deviceHandle->getDevice(), _indices.presentFamily.value(), 0, &_presentQueue);
 
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(deviceHandle->getPhysicalDevice());
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(deviceHandle->getPhysicalDevice(), surfaceHandle->getSurface());
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
         VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D _swapChainExtent = chooseSwapExtent(swapChainSupport.capabilities);
+        VkExtent2D _swapChainExtent = chooseSwapExtent(swapChainSupport.capabilities, surfaceHandle->getWindow());
 
         _swapChainImageFormat = surfaceFormat.format;
 
@@ -113,16 +117,11 @@ namespace VkEngine
         // create the depth image
         _depthImage = BufferHandler::createImage(VK_FORMAT_D32_SFLOAT, depthImageExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
-        DeletionQueue::push_function([=]()
-        {
-            vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
-        });
-
         // build an image-view for the depth image to use for rendering
         VkImageViewCreateInfo depthImageViewcreateInfo{};
         depthImageViewcreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         depthImageViewcreateInfo.pNext = nullptr;
-        depthImageViewcreateInfo.image = BufferHandler::getImage(_depthimage);
+        depthImageViewcreateInfo.image = BufferHandler::getImage(_depthImage)->_image;
 
         depthImageViewcreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         depthImageViewcreateInfo.format = VK_FORMAT_D32_SFLOAT;
@@ -138,36 +137,36 @@ namespace VkEngine
         depthImageViewcreateInfo.subresourceRange.baseArrayLayer = 0;
         depthImageViewcreateInfo.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(_device, &depthImageViewcreateInfo, nullptr, &_depthImageView));
+        VK_CHECK(vkCreateImageView(deviceHandle->getDevice(), &depthImageViewcreateInfo, nullptr, &_depthImageView));
 
         DeletionQueue::push_function([=]()
         {
-            vkDestroyImageView(_device, _depthImageView, nullptr);
+            vkDestroyImageView(deviceHandle->getDevice(), _depthImageView, nullptr);
         });
     }
 
-    SwapChainSupportDetails SwapChainHandler::querySwapChainSupport(VkPhysicalDevice device)
+    SwapChainSupportDetails SwapChainHandler::querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
     {
         SwapChainSupportDetails details;
 
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, _surface, &details.capabilities);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
         uint32_t formatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, _surface, &formatCount, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 
         if (formatCount != 0)
         {
             details.formats.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device, _surface, &formatCount, details.formats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
         }
 
         uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, _surface, &presentModeCount, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
 
         if (presentModeCount != 0)
         {
             details.presentModes.resize(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device, _surface, &presentModeCount, details.presentModes.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
         }
 
         return details;
@@ -196,7 +195,7 @@ namespace VkEngine
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    VkExtent2D SwapChainHandler::chooseSwapExtent(VkSurfaceCapabilitiesKHR capabilities)
+    VkExtent2D SwapChainHandler::chooseSwapExtent(VkSurfaceCapabilitiesKHR capabilities, GLFWwindow* window)
     {
         if (capabilities.currentExtent.width != UINT32_MAX)
         {
@@ -205,7 +204,7 @@ namespace VkEngine
         else
         {
             int width, height;
-            glfwGetFramebufferSize(_window, &width, &height);
+            glfwGetFramebufferSize(window, &width, &height);
 
             VkExtent2D actualExtent =
             {

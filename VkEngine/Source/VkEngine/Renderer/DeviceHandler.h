@@ -24,6 +24,10 @@ namespace VkEngine
 		DeviceHandler(VkInstance intance);
 		~DeviceHandler() {};
 
+		inline VkDevice getDevice() { return _device; };
+		inline VkPhysicalDevice getPhysicalDevice() { return _physicalDevice; };
+		inline VkPhysicalDeviceProperties getPhysicalDeviceProperties() { return _deviceProperties; };
+
 	private:
 
 		VkDevice _device;
@@ -31,9 +35,6 @@ namespace VkEngine
 		VkPhysicalDeviceProperties _deviceProperties;
 
 		QueueFamilyIndices _indices;
-
-		inline VkDevice getDevice() { return _device; };
-		inline VkPhysicalDevice getPhysicalDevice() { return _physicalDevice; };
 
 		inline QueueFamilyIndices getIndices() { return _indices; };
 	};

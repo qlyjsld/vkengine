@@ -34,10 +34,14 @@ namespace VkEngine
         static BufferID createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
         static BufferID createImage(VkFormat format, VkExtent3D extent, VkImageUsageFlags imageUsage, VmaMemoryUsage memoryUsage);
 
-        static inline AllocatedBuffer& getBuffer(BufferID bufferId);
-        static inline AllocatedImage& getImage(ImageID imageId);
+        static void deleteBuffer(BufferID id);
+        static void deleteImage(BufferID id);
+
+        static inline AllocatedBuffer* getBuffer(BufferID bufferId);
+        static inline AllocatedImage* getImage(ImageID imageId);
 
         static inline size_t getBufferSize(BufferID bufferID);
+        static inline VmaAllocator getAllocator();
         
     private:
 

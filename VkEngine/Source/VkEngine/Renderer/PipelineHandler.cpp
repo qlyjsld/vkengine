@@ -3,26 +3,62 @@
 #include "VkEngine/Renderer/RenderPassHandler.h"
 #include "VkEngine/Renderer/DescriptorHandler.h"
 #include "VkEngine/Renderer/Mesh.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/GlobalMacro.h"
+#include "VkEngine/Core/DeletionQueue.h"
+
+#include <fstream>
 
 namespace VkEngine
 {
 
+	static std::vector<char> readfile(const std::string& filename)
+	{
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+		{
+			throw std::runtime_error("failed to open file");
+		}
+
+		size_t filesize = (size_t)file.tellg();
+		std::vector<char> buffer(filesize);
+
+		file.seekg(0);
+		file.read(buffer.data(), filesize);
+
+		file.close();
+
+		return buffer;
+	}
+
+	static VkShaderModule createShaderModule(const std::vector<char>& code, VkDevice device)
+	{
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+		VkShaderModule shaderModule;
+		VK_CHECK(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
+
+		return shaderModule;
+	}
+
 	PipelineHandler::PipelineHandler(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandle, RenderPassHandler* renderPassHandle)
 	{
-		PipelineBuilder graphicPipelineInfo = buildGraphicPipeline("shaders/vert.spv", "shaders/frag.spv", descriptorHandle->getLayouts());
+		PipelineBuilder graphicPipelineInfo = buildGraphicPipeline("shaders/vert.spv", "shaders/frag.spv", descriptorHandle->getLayouts(), deviceHandle->getDevice());
 		_pipelines.push_back(graphicPipelineInfo.buildPipeline(deviceHandle->getDevice(), renderPassHandle->getRenderpass()));
 	}
 
-	PipelineBuilder PipelineHandler::buildGraphicPipeline(const std::string& vertexShader, const std::string& fragmentShader, const std::vector<VkDescriptorSetLayout>& layouts)
+	PipelineHandler::PipelineBuilder PipelineHandler::buildGraphicPipeline(const std::string& vertexShader, const std::string& fragmentShader, const std::vector<VkDescriptorSetLayout>& layouts, VkDevice device)
 	{
 		PipelineBuilder pipelineInfo{};
 
 		auto vertShaderCode = readfile(vertexShader);
 		auto fragShaderCode = readfile(fragmentShader);
 
-		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, device);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, device);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -50,16 +86,16 @@ namespace VkEngine
 
 		VkPipelineLayout pipelineLayout{};
 
-		VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+		VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 		_pipelineLayouts.push_back(pipelineLayout);
 
 		DeletionQueue::push_function([=]()
 		{
-			vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+			vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		});
 
-		VertexInputDescription description = Vertex::get_vertex_description();
+		VertexInputDescription description = Vertex::getVertexDescription();
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -172,7 +208,7 @@ namespace VkEngine
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &_dynamicState;
 		pipelineInfo.layout = _pipelineLayout;
-		pipelineInfo.renderPass = pass;
+		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // optional
 		pipelineInfo.basePipelineIndex = -1; // optional

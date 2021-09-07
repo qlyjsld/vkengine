@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+struct GLFWwindow;
+
 namespace VkEngine
 {
 
@@ -13,10 +15,11 @@ namespace VkEngine
 		~SurfaceHandler();
 
 		inline VkSurfaceKHR getSurface() { return _surface; };
+		inline GLFWwindow* getWindow() { return _window; };
 
 	private:
 
-		struct GLFWwindow* _window{ nullptr };
+		GLFWwindow* _window{ nullptr };
 
 		VkSurfaceKHR _surface;
 	};

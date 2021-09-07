@@ -1,7 +1,9 @@
 #include "VkEngine/Renderer/DescriptorHandler.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
 #include "VkEngine/Renderer/BufferHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/DeletionQueue.h"
 #include "VkEngine/Core/ConsoleVariableSystem.h"
+#include "VkEngine/Core/GlobalMacro.h"
 
 #include <vulkan/vulkan.h>
 #include <array>
@@ -11,7 +13,7 @@ AutoInt FRAME_OVERLAP(2, "FRAME_OVERLAP", "FRAME_OVERLAP", ConsoleVariableFlag::
 namespace VkEngine
 {
 
-	void DescriptorHandler::DescriptorSetBuilder::build(DeviceHandler* deviceHandle)
+	void DescriptorHandler::DescriptorSetBuilder::build(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandler)
 	{
 		if (!buffers.empty() && !bindings.empty())
 		{
@@ -24,7 +26,7 @@ namespace VkEngine
 			setInfo.pBindings = bindings.data();
 
 			VK_CHECK(vkCreateDescriptorSetLayout(deviceHandle->getDevice(), &setInfo, nullptr, &layout));
-			_descriptorSetLayouts.push_back(layout);
+			descriptorHandler->_descriptorSetLayouts.push_back(layout);
 
 			DeletionQueue::push_function([=]()
 			{
@@ -35,17 +37,17 @@ namespace VkEngine
 			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			allocInfo.pNext = nullptr;
 
-			allocInfo.descriptorPool = _descriptorPool;
+			allocInfo.descriptorPool = descriptorHandler->_descriptorPool;
 			allocInfo.descriptorSetCount = 1;
 			allocInfo.pSetLayouts = &layout;
 
 			vkAllocateDescriptorSets(deviceHandle->getDevice(), &allocInfo, &descriptorSet);
-			_descriptorSets.push_back(descriptorSet);
+			descriptorHandler->_descriptorSets.push_back(descriptorSet);
 
 			for (uint32_t i = 0; i < buffers.size(); i++)
 			{
 				VkDescriptorBufferInfo bufferInfo{};
-				bufferInfo.buffer = BufferHandler::getBuffer(buffers[i]);
+				bufferInfo.buffer = BufferHandler::getBuffer(buffers[i])->_buffer;
 				bufferInfo.offset = 0;
 				bufferInfo.range = sizeof(BufferHandler::getBufferSize(buffers[i]));
 
@@ -57,15 +59,15 @@ namespace VkEngine
 				writeSet.dstSet = descriptorSet;
 				writeSet.descriptorCount = 1;
 				writeSet.descriptorType = types[i];
-				writeSet.pBufferInfo = bufferInfo;
+				writeSet.pBufferInfo = &bufferInfo;
 
 				VkWriteDescriptorSet writeOperation = { writeSet };
-				vkUpdateDescriptorSets(deviceHandle->getDevice(), 1, writeOperation, 0, nullptr);
+				vkUpdateDescriptorSets(deviceHandle->getDevice(), 1, &writeOperation, 0, nullptr);
 			}
 		}
 	}
 
-    void DescriptorHandler::DescriptorHandler(DeviceHandler* deviceHandle)
+    DescriptorHandler::DescriptorHandler(DeviceHandler* deviceHandle)
     {
         // create indirect buffer
 		// _indirectBuffer = BufferHandler::createBuffer(FRAME_OVERLAP.get() * sizeof(VkDrawIndirectCommand), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -101,8 +103,8 @@ namespace VkEngine
         DescriptorSetBuilder descriporSet2;
         descriporSet2.pushDynamicStorageBuffer<GPUObjectData>(VK_SHADER_STAGE_VERTEX_BIT);
 
-        descriporSet1.build(deviceHandle);
-		descriporSet2.build(deviceHandle);
+        descriporSet1.build(deviceHandle, this);
+		descriporSet2.build(deviceHandle, this);
     }
 
 	VkDescriptorSetLayoutBinding DescriptorHandler::createDescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding)
@@ -124,7 +126,7 @@ namespace VkEngine
 
 		setInfo.bindingCount = bindings.size();
 		setInfo.flags = 0;
-		setInfo.pBindings = bindings;
+		setInfo.pBindings = bindings.data();
 
 		VK_CHECK(vkCreateDescriptorSetLayout(device, &setInfo, nullptr, &layout));
 
@@ -134,9 +136,9 @@ namespace VkEngine
 		});
 	}
 
-	size_t padUniformBufferSize(size_t originalSize)
+	size_t padUniformBufferSize(size_t originalSize, VkPhysicalDeviceProperties deviceProperties)
 	{
-		size_t minUboAlignment = _deviceProperties.limits.minUniformBufferOffsetAlignment;
+		size_t minUboAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
 		size_t alignedSize = originalSize;
 		if (minUboAlignment > 0)
 		{

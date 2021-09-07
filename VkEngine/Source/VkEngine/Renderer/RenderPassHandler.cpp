@@ -1,12 +1,15 @@
 #include "VkEngine/Renderer/RenderPassHandler.h"
+#include "VkEngine/Renderer/DeviceHandler.h"
 #include "VkEngine/Renderer/SwapChainHandler.h"
+#include "VkEngine/Core/DeletionQueue.h"
+#include "VkEngine/Core/GlobalMacro.h"
 
 #include <vulkan/vulkan.h>
 
 namespace VkEngine
 {
 
-    RenderPassHandler::RenderPassHandler(SwapChainHandler* swapChainHandler)
+    RenderPassHandler::RenderPassHandler(SwapChainHandler* swapChainHandler, DeviceHandler* deviceHandler)
     {
         VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = swapChainHandler->getSwapChainImageFormat();
@@ -61,11 +64,11 @@ namespace VkEngine
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
-		VK_CHECK(vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderpass));
+		VK_CHECK(vkCreateRenderPass(deviceHandler->getDevice(), &renderPassInfo, nullptr, &_renderpass));
 
-		_deletionQueue.push_function([=]()
+		DeletionQueue::push_function([=]()
 		{
-			vkDestroyRenderPass(_device, _renderpass, nullptr);
+			vkDestroyRenderPass(deviceHandler->getDevice(), _renderpass, nullptr);
 		});
     }
 }

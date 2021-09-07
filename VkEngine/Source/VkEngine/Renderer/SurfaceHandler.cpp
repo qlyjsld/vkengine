@@ -1,6 +1,7 @@
 #include "VkEngine/Renderer/SurfaceHandler.h"
 #include "VkEngine/Renderer/DeletionQueue.h"
 #include "VkEngine/Core/ConsoleVariableSystem.h"
+#include "VkEngine/Core/GlobalMacro.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -11,7 +12,7 @@ constexpr float HEIGHT = 900.0f;
 namespace VkEngine
 {
 
-    void SurfaceHandler::SurfaceHandler(VkInstance instance)
+    SurfaceHandler::SurfaceHandler(VkInstance instance)
     {
         if (!glfwInit())
 			throw std::runtime_error("GLFW initialization failed!");
@@ -26,11 +27,11 @@ namespace VkEngine
 
 		DeletionQueue::push_function([=]()
 		{
-			vkDestroySurfaceKHR(_instance, _surface, nullptr);
+			vkDestroySurfaceKHR(instance, _surface, nullptr);
 		});
     }
 
-    void SurfaceHandler::~SurfaceHandler()
+    SurfaceHandler::~SurfaceHandler()
     {
         glfwDestroyWindow(_window);
     }

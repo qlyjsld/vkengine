@@ -1,14 +1,23 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <string>
+#include <vector>
 
 namespace VkEngine
 {
 
+	class DeviceHandler;
 	class DescriptorHandler;
+	class RenderPassHandler;
 
 	class PipelineHandler
 	{
 	public:
+
+		PipelineHandler(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandle, RenderPassHandler* renderPassHandle);
+		~PipelineHandler() {};
+
+	private:
 
 		class PipelineBuilder
 		{
@@ -29,12 +38,7 @@ namespace VkEngine
 			VkPipeline buildPipeline(VkDevice device, VkRenderPass renderPass);
 		};
 
-		PipelineHandler(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandle, RenderPassHandler* renderPassHandle);
-		~PipelineHandler() {};
-
-	private:
-
-		PipelineBuilder buildGraphicPipeline(const std::string& vertexShader, const std::string& fragmentShader, const VkDescriptorSetLayout* layouts);
+		PipelineBuilder buildGraphicPipeline(const std::string& vertexShader, const std::string& fragmentShader, const std::vector<VkDescriptorSetLayout>& layouts, VkDevice device);
 
 		std::vector<VkPipeline> _pipelines;
 		std::vector<VkPipelineLayout> _pipelineLayouts;

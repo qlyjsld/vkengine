@@ -1,12 +1,20 @@
 #include "VkEngine/Renderer/DeviceHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/DeletionQueue.h"
+#include "VkEngine/Core/GlobalMacro.h"
 
 #include <stdexcept>
+#include <set>
+
+const std::vector<const char*> deviceExtensions =
+{
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
+};
 
 namespace VkEngine
 {
 
-	void DeviceHandler::DeviceHandler(VkInstance instance)
+	DeviceHandler::DeviceHandler(VkInstance instance)
 	{
 		// pick physical device
 		uint32_t deviceCount = 0;
@@ -37,10 +45,10 @@ namespace VkEngine
 
 		// logic to find graphics queue family
         uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueFamilyCount, nullptr);
 
         std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+        vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueFamilyCount, queueFamilies.data());
 
         uint32_t i = 0;
         VkBool32 presentSupport = VK_FALSE;
@@ -49,7 +57,7 @@ namespace VkEngine
             if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 _indices.graphicFamily = i;
-                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+                vkGetPhysicalDeviceSurfaceSupportKHR(_physicalDevice, i, , &presentSupport);
 
                 if (presentSupport) {
                     _indices.presentFamily = i;

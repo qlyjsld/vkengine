@@ -4,8 +4,14 @@
 #include <span>
 #include <vector>
 
+#include "vk_mem_alloc.h"
+#include "glm/vec4.hpp"
+#include "glm/mat4x4.hpp"
+
 namespace VkEngine
 {
+
+    class DeviceHandler;
 
     struct GPUCameraData
 	{
@@ -30,11 +36,24 @@ namespace VkEngine
 
     constexpr uint16_t MAXOBJECTS = 65535;
 
-    size_t padUniformBufferSize(size_t originalSize);
+    size_t padUniformBufferSize(size_t originalSize, VkPhysicalDeviceProperties deviceProperties);
 
     class DescriptorHandler
     {
     public:
+
+        friend struct DescriptorSetBuilder;
+
+        DescriptorHandler(DeviceHandler* deviceHandle);
+        ~DescriptorHandler() {};
+
+        inline std::vector<VkDescriptorSetLayout> getLayouts() { return _descriptorSetLayouts; };
+
+        VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
+        void createDescriptorSetLayout(const std::span<VkDescriptorSetLayoutBinding>& bindings, VkDevice device, VkDescriptorSetLayout layout);
+        // void allocateDescriptorSets();
+
+    private:
 
         struct DescriptorSetBuilder
         {
@@ -72,7 +91,7 @@ namespace VkEngine
                 types.push_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
             }
 
-            void build(DeviceHandler* deviceHandle);
+            void build(DeviceHandler* deviceHandle, DescriptorHandler* descriptorHandler);
 
             std::vector<BufferID> buffers;
 
@@ -84,17 +103,6 @@ namespace VkEngine
             std::vector<VkDescriptorSetLayoutBinding> bindings;
             std::vector<VkDescriptorType> types;
         };
-
-        DescriptorHandler(DeviceHandler* deviceHandle);
-        ~DescriptorHandler();
-
-        inline std::vector<VkDescriptorSetLayout> getLayouts() { return _descriptorSetLayouts; };
-
-        VkDescriptorSetLayoutBinding createDescriptorSetLayoutBinding(VkDescriptorType descriptorType, VkShaderStageFlags stageFlag, uint32_t binding);
-        void createDescriptorSetLayout(const std::span<VkDescriptorSetLayoutBinding>& bindings, VkDevice device, VkDescriptorSetLayout layout);
-        void allocateDescriptorSets();
-
-    private:
         
         VkDescriptorPool _descriptorPool;
 

@@ -1,6 +1,9 @@
 #include "VkEngine/Renderer/BufferHandler.h"
 #include "VkEngine/Renderer/DeviceHandler.h"
-#include "VkEngine/Renderer/DeletionQueue.h"
+#include "VkEngine/Core/DeletionQueue.h"
+#include "VkEngine/Core/GlobalMacro.h"
+
+#include <vulkan/vulkan.h>
 
 namespace VkEngine
 {
@@ -42,7 +45,7 @@ namespace VkEngine
 	{
 		// the depth image will be an image with the format we selected and Depth Attachment usage flag
         VkImageCreateInfo depthImageCreateInfo{};
-        depthImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_SCREATE_INFO;
+        depthImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         depthImageCreateInfo.pNext = nullptr;
 
         depthImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -73,7 +76,17 @@ namespace VkEngine
 		return _allocatedImages.size() - 1;
 	}
 
-    AllocatedBuffer& BufferHandler::getBuffer(BufferID bufferId)
+	void BufferHandler::deleteBuffer(BufferID id)
+	{
+		vmaDestroyBuffer(_allocator, getBuffer(id)->_buffer, getBuffer(id)->_allocation);
+	}
+
+	void BufferHandler::deleteImage(BufferID id)
+	{
+		vmaDestroyImage(_allocator, getImage(id)->_image, getImage(id)->_allocation);
+	}
+
+    AllocatedBuffer* BufferHandler::getBuffer(BufferID bufferId)
 	{
 		if (bufferId >= 0 && bufferId < _allocatedBuffers.size())
 		{
@@ -81,11 +94,11 @@ namespace VkEngine
 		}
 		else
 		{
-			return std::runtime_error("Buffer not exist!");
+			throw std::runtime_error("Buffer not exist!");
 		}
 	}
 
-    AllocatedImage& BufferHandler::getImage(ImageID imageId)
+    AllocatedImage* BufferHandler::getImage(ImageID imageId)
 	{
 		if (imageId >= 0 && imageId < _allocatedImages.size())
 		{
@@ -93,7 +106,7 @@ namespace VkEngine
 		}
 		else
 		{
-			return std::runtime_error("Image not exist!");
+			throw std::runtime_error("Image not exist!");
 		}
 	}
 
@@ -102,7 +115,12 @@ namespace VkEngine
 		return _allocatedBuffers[bufferID].bufferSize;
 	}
 
-    void BufferHandler::BufferHandler(VkInstance instance, DeviceHandler* deviceHandle)
+	VmaAllocator BufferHandler::getAllocator()
+	{
+		return _allocator;
+	}
+
+    BufferHandler::BufferHandler(VkInstance instance, DeviceHandler* deviceHandle)
     {
         // initialize the memory allocator
 		VmaAllocatorCreateInfo allocatorInfo{};

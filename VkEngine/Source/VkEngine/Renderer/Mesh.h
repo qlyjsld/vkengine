@@ -10,6 +10,7 @@
 
 namespace VkEngine
 {
+	struct AllocatedBuffer;
 
 	struct VertexInputDescription
 	{
@@ -35,7 +36,7 @@ namespace VkEngine
 		// glm::mat4 transformMatrix;
 
 		AllocatedBuffer _vertexBuffer;
-		static void loadFromObj(const char* filename, struct Renderer* renderer);
+		static void loadFromObj(const char* filename, class Renderer* renderer);
 	};
 
 }
