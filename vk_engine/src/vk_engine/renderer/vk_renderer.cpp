@@ -71,9 +71,9 @@ namespace vk_engine {
 
 	// main loop involve rendering on the screen
 	void vk_renderer::mainloop() {
-		auto indirectCommandsWorker = std::async(std::launch::async, [&]() {
-			while (!glfwWindowShouldClose(_window)) {
-				_drawSemaphore.acquire();
+		// auto indirectCommandsWorker = std::async(std::launch::async, [&]() {
+			// while (!glfwWindowShouldClose(_window)) {
+				// _drawSemaphore.acquire();
 
 				VkDrawIndirectCommand* drawCommands;
 				vmaMapMemory(_allocator, _indirectBuffer._allocation, (void**)&drawCommands);
@@ -87,8 +87,8 @@ namespace vk_engine {
 				}
 
 				vmaUnmapMemory(_allocator, _indirectBuffer._allocation);
-			}
-		});
+			// }
+		// });
 
 		auto cpuToGpuWorker = std::async(std::launch::async, [&]() {
 			while (!glfwWindowShouldClose(_window)) {
@@ -150,7 +150,7 @@ namespace vk_engine {
 			drawFrame();
 		}
 
-		indirectCommandsWorker.wait();
+		// indirectCommandsWorker.wait();
 		cpuToGpuWorker.wait();
 		vkDeviceWaitIdle(_device);
 	}
@@ -162,25 +162,26 @@ namespace vk_engine {
 
 		// start memcpy to gpu
 		_drawSemaphore.release();
-		_drawSemaphore.release();
+		// _drawSemaphore.release();
 
 		uint32_t imageIndex;
 		vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _frames[_currentFrame]._imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 		vkResetCommandBuffer(_frames[_currentFrame]._maincommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+		vkResetCommandBuffer(_frames[_currentFrame]._secondaryCommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
 		// rerecord the command buffer
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // optional
 		beginInfo.pInheritanceInfo = nullptr; // optional
-	
+
+		VK_CHECK(vkBeginCommandBuffer(_frames[_currentFrame]._maincommandBuffer, &beginInfo));
+
 		// clear depth at 1
 		VkClearValue depthClear;
 		depthClear.depthStencil.depth = 1.f;
 
 		VkClearValue clearValues[] = { clearColor, depthClear };
-
-		VK_CHECK(vkBeginCommandBuffer(_frames[_currentFrame]._maincommandBuffer, &beginInfo));
 
 		// set viewport and scissor dynamically
 		VkViewport viewport{};
@@ -198,9 +199,6 @@ namespace vk_engine {
 		VkViewport viewports[] = { viewport };
 		VkRect2D scissors[] = { scissor };
 
-		vkCmdSetViewport(_frames[_currentFrame]._maincommandBuffer, 0, 1, viewports);
-		vkCmdSetScissor(_frames[_currentFrame]._maincommandBuffer, 0, 1, scissors);
-
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = _renderpass;
@@ -210,9 +208,19 @@ namespace vk_engine {
 		renderPassInfo.clearValueCount = 2;
 		renderPassInfo.pClearValues = &clearValues[0];
 
-		vkCmdBeginRenderPass(_frames[_currentFrame]._maincommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(_frames[_currentFrame]._maincommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-		draw_objects(_frames[_currentFrame]._maincommandBuffer, _renderables.data(), _renderables.size(), _frames[_currentFrame]);
+		std::vector<IndirectBatch> batches = compactDraw(_renderables.data(), _renderables.size());
+
+		for (const auto& batch : batches) {
+			auto secondaryBufferRecording = std::async(std::launch::async, [&]() {
+				draw_object(_frames[_currentFrame]._secondaryCommandBuffer, batch, _frames[_currentFrame], _renderpass, _swapChainFrameBuffers[imageIndex], viewports, scissors);
+			});
+
+			secondaryBufferRecording.wait();
+		}
+
+		vkCmdExecuteCommands(_frames[_currentFrame]._maincommandBuffer, 1, &_frames[_currentFrame]._secondaryCommandBuffer);
 
 		vkCmdEndRenderPass(_frames[_currentFrame]._maincommandBuffer);
 
@@ -256,7 +264,23 @@ namespace vk_engine {
 		std::cout << "frame time: " << elapsed_seconds.count() * 100 << "ms\n"; */
 	}
 
-	void vk_renderer::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame) {
+	void vk_renderer::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame, VkRenderPass renderPass, VkFramebuffer framebuffer) {
+
+		VkCommandBufferInheritanceInfo commandBufferInheritanceInfo{};
+		commandBufferInheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+
+		commandBufferInheritanceInfo.renderPass = renderPass;
+		commandBufferInheritanceInfo.subpass = 0;
+		commandBufferInheritanceInfo.framebuffer = framebuffer;
+
+		// rerecord the command buffer
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT; // optional
+		beginInfo.pInheritanceInfo = &commandBufferInheritanceInfo; // optional
+
+		VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
 		std::vector<IndirectBatch> draws = compactDraw(first, count);
 
 		for (const auto& draw : draws) {
@@ -276,6 +300,47 @@ namespace vk_engine {
 
 			vkCmdDrawIndirect(cmd, _indirectBuffer._buffer, indirectOffset, draw.count, drawStride);
 		}
+
+		VK_CHECK(vkEndCommandBuffer(cmd));
+	}
+
+	void vk_renderer::draw_object(VkCommandBuffer cmd, const IndirectBatch& batch, const FrameData& frame, VkRenderPass renderPass, VkFramebuffer framebuffer, VkViewport* viewports, VkRect2D* scissors) {
+
+		VkCommandBufferInheritanceInfo commandBufferInheritanceInfo{};
+		commandBufferInheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+
+		commandBufferInheritanceInfo.renderPass = renderPass;
+		commandBufferInheritanceInfo.subpass = 0;
+		commandBufferInheritanceInfo.framebuffer = framebuffer;
+
+		// rerecord the command buffer
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT; // optional
+		beginInfo.pInheritanceInfo = &commandBufferInheritanceInfo; // optional
+
+		VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+		vkCmdSetViewport(_frames[_currentFrame]._secondaryCommandBuffer, 0, 1, viewports);
+		vkCmdSetScissor(_frames[_currentFrame]._secondaryCommandBuffer, 0, 1, scissors);
+
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, batch.material->pipeline);
+
+		uint32_t uniform_offset[] = { pad_uniform_buffer_size(sizeof(GPUCameraData)) * _currentFrame, pad_uniform_buffer_size(sizeof(GPUSceneData)) * _currentFrame };
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, batch.material->pipelineLayout, 0, 1, &_globalDescriptor, 2, uniform_offset);
+
+		//object data descriptor
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, batch.material->pipelineLayout, 1, 1, &frame._objectDescriptor, 0, nullptr);
+
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(cmd, 0, 1, &batch.mesh->_vertexBuffer._buffer, &offset);
+
+		VkDeviceSize indirectOffset = batch.first * sizeof(VkDrawIndirectCommand);
+		uint32_t drawStride = sizeof(VkDrawIndirectCommand);
+
+		vkCmdDrawIndirect(cmd, _indirectBuffer._buffer, indirectOffset, batch.count, drawStride);
+
+		VK_CHECK(vkEndCommandBuffer(cmd));
 	}
 
 	std::vector<IndirectBatch> vk_renderer::compactDraw(RenderObject* objs, int count) {
@@ -1034,19 +1099,28 @@ namespace vk_engine {
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // optional
 
 		for (auto& frame : _frames) {
-			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._commandPool));
+			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._maincommandPool));
+			VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &frame._secondaryCommandPool));
 
 			_deletionQueue.push_function([=]() {
-				vkDestroyCommandPool(_device, frame._commandPool, nullptr);
+				vkDestroyCommandPool(_device, frame._maincommandPool, nullptr);
+				vkDestroyCommandPool(_device, frame._secondaryCommandPool, nullptr);
 			});
 
 			VkCommandBufferAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool = frame._commandPool;
+			allocInfo.commandPool = frame._maincommandPool;
 			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocInfo.commandBufferCount = 1;
 
 			VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, &frame._maincommandBuffer));
+
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.commandPool = frame._secondaryCommandPool;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+			allocInfo.commandBufferCount = 1;
+
+			VK_CHECK(vkAllocateCommandBuffers(_device, &allocInfo, &frame._secondaryCommandBuffer));
 		}
 
 		VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_uploadContext._commandPool));

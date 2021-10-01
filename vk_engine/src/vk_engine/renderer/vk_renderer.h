@@ -62,8 +62,10 @@ namespace vk_engine {
 	};
 
 	struct FrameData {
-		VkCommandPool _commandPool;
+		VkCommandPool _maincommandPool;
+		VkCommandPool _secondaryCommandPool;
 		VkCommandBuffer _maincommandBuffer;
+		VkCommandBuffer _secondaryCommandBuffer;
 
 		VkSemaphore _imageAvailableSemaphore;
 		VkSemaphore _renderFinishedSemaphore;
@@ -140,7 +142,8 @@ namespace vk_engine {
 
 		// draw functions
 		void drawFrame();
-		void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame);
+		void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count, const FrameData& frame, VkRenderPass renderPass, VkFramebuffer framebuffer);
+		void draw_object(VkCommandBuffer cmd, const IndirectBatch& batch, const FrameData& frame, VkRenderPass renderPass, VkFramebuffer framebuffer, VkViewport* viewports, VkRect2D* scissors);
 		std::vector<IndirectBatch> compactDraw(RenderObject* objs, int count);
 
 		AllocatedBuffer _indirectBuffer;
